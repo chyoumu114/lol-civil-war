@@ -10,7 +10,7 @@ COPY web/ ./
 RUN npm run build
 
 # ---------- Go 构建 ----------
-FROM golang:1.26-alpine AS build
+FROM golang:1.27.3-alpine AS build
 WORKDIR /src
 ARG VERSION=dev
 ARG GOPROXY=https://proxy.golang.org,direct

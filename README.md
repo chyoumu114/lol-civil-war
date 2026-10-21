@@ -2,7 +2,7 @@
 
 面向 QQ 群的《英雄联盟》5v5 自定义内战组织工具：报名、自动战力平衡、对局记录、赛后评分与排行榜。
 
-后端由 Go 1.26 重写，单二进制 + MySQL 8，内置前端静态资源；按顺序执行几条命令即可完成部署。
+后端由 Go 1.27.3 重写，单二进制 + MySQL 8，内置前端静态资源；按顺序执行几条命令即可完成部署。
 
 ## 功能
 
@@ -23,7 +23,7 @@
 
 | 组件 | 选型 |
 | --- | --- |
-| 后端 | Go 1.26.x（标准库 `net/http`，无 Web 框架） |
+| 后端 | Go 1.27.3（标准库 `net/http`，无 Web 框架） |
 | 数据库 | MySQL 8.0+ / 8.4 LTS（驱动 `github.com/go-sql-driver/mysql`） |
 | 前端 | Vue 3 + Arco Design Vue + Vite，构建产物嵌入二进制 |
 | 部署 | Docker Compose：应用容器 + MySQL 容器 |
@@ -61,7 +61,7 @@ curl -fsS http://127.0.0.1:18020/api/health
 
 ### 从源码运行
 
-需要 Go 1.26+、Node.js 22.23.4+、一个可用的 MySQL 8 实例与数据库：
+需要 Go 1.27.3+、Node.js 22.23.4+、一个可用的 MySQL 8 实例与数据库：
 
 ```bash
 make build

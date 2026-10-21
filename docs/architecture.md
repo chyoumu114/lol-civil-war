@@ -23,7 +23,7 @@
 
 | 组件 | 选型 |
 | --- | --- |
-| 语言 | Go 1.26.x（标准库 `net/http`） |
+| 语言 | Go 1.27.3（标准库 `net/http`） |
 | 数据库 | MySQL 8.0+ / 8.4 LTS（`github.com/go-sql-driver/mysql`） |
 | 前端 | Vue 3 + Arco Design Vue + Vite，构建后 `go:embed` 进二进制 |
 | 部署 | 单容器，数据卷挂载 `/data` |
