@@ -75,13 +75,26 @@ LCW_ALLOWED_GROUPS=123456789 LCW_DEV_LOGIN=true ./bin/lol-civil-war
 ### 本地开发
 
 ```bash
-# 终端 1：后端（监听 8080，开启开发登录）
-LCW_ALLOWED_GROUPS=123456789 LCW_DEV_LOGIN=true \
-LCW_DB_HOST=127.0.0.1 LCW_DB_USER=lcw LCW_DB_PASSWORD=你的密码 LCW_DB_NAME=lol_civil_war \
-make run
+# 终端 1：自动启动开发 MySQL（127.0.0.1:3307）+ 后端（8080）
+make dev
 
 # 终端 2：前端热更新（5173，代理 /api 与 /auth 到 8080）
 cd web && npm install && npm run dev
+```
+
+`make dev` 会用 Docker 启动 `lol-civil-war-mysql-dev`（端口 3307，库 `lol_civil_war_dev`）。
+如果已经有自己的 MySQL，直接指定连接即可跳过 Docker：
+
+```bash
+LCW_DB_HOST=127.0.0.1 LCW_DB_PORT=3306 \
+LCW_DB_USER=lcw LCW_DB_PASSWORD=你的密码 LCW_DB_NAME=lol_civil_war \
+make dev
+```
+
+如果后端不在 8080，前端代理地址可覆盖：
+
+```bash
+VITE_API_TARGET=http://127.0.0.1:18020 npm run dev
 ```
 
 开发登录：
