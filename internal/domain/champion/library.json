@@ -1,0 +1,2296 @@
+{
+    "version": "16.20.1",
+    "updatedAt": "2026-10-17",
+    "sources": [
+        "ddragon 16.20.1 zh_CN/en_US champion.json",
+        "merakianalytics champion positions",
+        "resources/data/champion-aliases.json"
+    ],
+    "champions": [
+        {
+            "key": "Syndra",
+            "en": "Syndra",
+            "cn": "辛德拉",
+            "title": "暗黑元首",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "球女",
+                "元首"
+            ]
+        },
+        {
+            "key": "Vayne",
+            "en": "Vayne",
+            "cn": "薇恩",
+            "title": "暗夜猎手",
+            "positions": [
+                "TOP",
+                "BOTTOM"
+            ],
+            "aliases": [
+                "vn",
+                "vayne",
+                "uzi"
+            ]
+        },
+        {
+            "key": "Aatrox",
+            "en": "Aatrox",
+            "cn": "亚托克斯",
+            "title": "暗裔剑魔",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "剑魔",
+                "话痨",
+                "啊"
+            ]
+        },
+        {
+            "key": "Rengar",
+            "en": "Rengar",
+            "cn": "雷恩加尔",
+            "title": "傲之追猎者",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "狮子狗",
+                "狮子"
+            ]
+        },
+        {
+            "key": "Viktor",
+            "en": "Viktor",
+            "cn": "维克托",
+            "title": "奥术先驱",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "三只手"
+            ]
+        },
+        {
+            "key": "Naafiri",
+            "en": "Naafiri",
+            "cn": "纳亚菲利",
+            "title": "百裂冥犬",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "狗",
+                "狼狗",
+                "虚化狗"
+            ]
+        },
+        {
+            "key": "Kled",
+            "en": "Kled",
+            "cn": "克烈",
+            "title": "暴怒骑士",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Jinx",
+            "en": "Jinx",
+            "cn": "金克丝",
+            "title": "暴走萝莉",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "爆爆"
+            ]
+        },
+        {
+            "key": "Ziggs",
+            "en": "Ziggs",
+            "cn": "吉格斯",
+            "title": "爆破鬼才",
+            "positions": [
+                "MIDDLE",
+                "BOTTOM"
+            ],
+            "aliases": [
+                "炸弹人",
+                "爆弹"
+            ]
+        },
+        {
+            "key": "Sejuani",
+            "en": "Sejuani",
+            "cn": "瑟庄妮",
+            "title": "北地之怒",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "猪妹",
+                "猪女"
+            ]
+        },
+        {
+            "key": "Anivia",
+            "en": "Anivia",
+            "cn": "艾尼维亚",
+            "title": "冰晶凤凰",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "冰鸟",
+                "凤凰"
+            ]
+        },
+        {
+            "key": "Lissandra",
+            "en": "Lissandra",
+            "cn": "丽桑卓",
+            "title": "冰霜女巫",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "冰女",
+                "冻结"
+            ]
+        },
+        {
+            "key": "Zaahen",
+            "en": "Zaahen",
+            "cn": "亚恒",
+            "title": "不落魔锋",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "赵信"
+            ]
+        },
+        {
+            "key": "Volibear",
+            "en": "Volibear",
+            "cn": "沃利贝尔",
+            "title": "不灭狂雷",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "狗熊",
+                "voli"
+            ]
+        },
+        {
+            "key": "Yunara",
+            "en": "Yunara",
+            "cn": "芸阿娜",
+            "title": "不破之誓",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "永岚",
+                "云"
+            ]
+        },
+        {
+            "key": "Pantheon",
+            "en": "Pantheon",
+            "cn": "潘森",
+            "title": "不屈之枪",
+            "positions": [
+                "TOP",
+                "JUNGLE",
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "斯巴达",
+                "panth"
+            ]
+        },
+        {
+            "key": "Katarina",
+            "en": "Katarina",
+            "cn": "卡特琳娜",
+            "title": "不祥之刃",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "卡特",
+                "kata"
+            ]
+        },
+        {
+            "key": "Nilah",
+            "en": "Nilah",
+            "cn": "尼菈",
+            "title": "不羁之悦",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "尼拉",
+                "水弥拉"
+            ]
+        },
+        {
+            "key": "Aphelios",
+            "en": "Aphelios",
+            "cn": "厄斐琉斯",
+            "title": "残月之肃",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "月男",
+                "efls",
+                "亚非"
+            ]
+        },
+        {
+            "key": "Fizz",
+            "en": "Fizz",
+            "cn": "菲兹",
+            "title": "潮汐海灵",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "小鱼人",
+                "小鱼"
+            ]
+        },
+        {
+            "key": "Varus",
+            "en": "Varus",
+            "cn": "韦鲁斯",
+            "title": "惩戒之箭",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "维鲁斯"
+            ]
+        },
+        {
+            "key": "Smolder",
+            "en": "Smolder",
+            "cn": "斯莫德",
+            "title": "炽炎雏龙",
+            "positions": [
+                "TOP",
+                "MIDDLE",
+                "BOTTOM"
+            ],
+            "aliases": [
+                "小火龙",
+                "福瑞"
+            ]
+        },
+        {
+            "key": "Vex",
+            "en": "Vex",
+            "cn": "薇古丝",
+            "title": "愁云使者",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "熬夜波比"
+            ]
+        },
+        {
+            "key": "Ivern",
+            "en": "Ivern",
+            "cn": "艾翁",
+            "title": "翠神",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "小菊"
+            ]
+        },
+        {
+            "key": "Heimerdinger",
+            "en": "Heimerdinger",
+            "cn": "黑默丁格",
+            "title": "大发明家",
+            "positions": [
+                "TOP",
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "大头"
+            ]
+        },
+        {
+            "key": "Irelia",
+            "en": "Irelia",
+            "cn": "艾瑞莉娅",
+            "title": "刀锋舞者",
+            "positions": [
+                "TOP",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "刀妹",
+                "奶奶常说"
+            ]
+        },
+        {
+            "key": "Talon",
+            "en": "Talon",
+            "cn": "泰隆",
+            "title": "刀锋之影",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "男刀",
+                "talon",
+                "翻墙"
+            ]
+        },
+        {
+            "key": "XinZhao",
+            "en": "Xin Zhao",
+            "cn": "赵信",
+            "title": "德邦总管",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "xin",
+                "赵云",
+                "菊花信"
+            ]
+        },
+        {
+            "key": "JarvanIV",
+            "en": "Jarvan IV",
+            "cn": "嘉文四世",
+            "title": "德玛西亚皇子",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "皇子",
+                "j4",
+                "嘉文"
+            ]
+        },
+        {
+            "key": "Garen",
+            "en": "Garen",
+            "cn": "盖伦",
+            "title": "德玛西亚之力",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "德玛",
+                "草丛伦",
+                "大宝剑"
+            ]
+        },
+        {
+            "key": "Quinn",
+            "en": "Quinn",
+            "cn": "奎因",
+            "title": "德玛西亚之翼",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "鸟人"
+            ]
+        },
+        {
+            "key": "Senna",
+            "en": "Senna",
+            "cn": "赛娜",
+            "title": "涤魂圣枪",
+            "positions": [
+                "BOTTOM",
+                "UTILITY"
+            ],
+            "aliases": [
+                "塞纳"
+            ]
+        },
+        {
+            "key": "Morgana",
+            "en": "Morgana",
+            "cn": "莫甘娜",
+            "title": "堕落天使",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "堕天使"
+            ]
+        },
+        {
+            "key": "Shaco",
+            "en": "Shaco",
+            "cn": "萨科",
+            "title": "恶魔小丑",
+            "positions": [
+                "JUNGLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "小丑",
+                "阳光男孩"
+            ]
+        },
+        {
+            "key": "Orianna",
+            "en": "Orianna",
+            "cn": "奥莉安娜",
+            "title": "发条魔灵",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "发条"
+            ]
+        },
+        {
+            "key": "Graves",
+            "en": "Graves",
+            "cn": "格雷福斯",
+            "title": "法外狂徒",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "男枪",
+                "狐臭"
+            ]
+        },
+        {
+            "key": "Riven",
+            "en": "Riven",
+            "cn": "锐雯",
+            "title": "放逐之刃",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "放逐",
+                "riven",
+                "上帝"
+            ]
+        },
+        {
+            "key": "Yone",
+            "en": "Yone",
+            "cn": "永恩",
+            "title": "封魔剑魂",
+            "positions": [
+                "TOP",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "双刀"
+            ]
+        },
+        {
+            "key": "Janna",
+            "en": "Janna",
+            "cn": "迦娜",
+            "title": "风暴之怒",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "风女",
+                "我风"
+            ]
+        },
+        {
+            "key": "Ryze",
+            "en": "Ryze",
+            "cn": "瑞兹",
+            "title": "符文法师",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "流浪",
+                "光头",
+                "ryze"
+            ]
+        },
+        {
+            "key": "Braum",
+            "en": "Braum",
+            "cn": "布隆",
+            "title": "弗雷尔卓德之心",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "男同"
+            ]
+        },
+        {
+            "key": "Brand",
+            "en": "Brand",
+            "cn": "布兰德",
+            "title": "复仇焰魂",
+            "positions": [
+                "JUNGLE",
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "火男",
+                "搅屎棍"
+            ]
+        },
+        {
+            "key": "Kalista",
+            "en": "Kalista",
+            "cn": "卡莉丝塔",
+            "title": "复仇之矛",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "滑板鞋",
+                "kalista"
+            ]
+        },
+        {
+            "key": "Lux",
+            "en": "Lux",
+            "cn": "拉克丝",
+            "title": "光辉女郎",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "光辉",
+                "lux",
+                "你光"
+            ]
+        },
+        {
+            "key": "Leblanc",
+            "en": "LeBlanc",
+            "cn": "乐芙兰",
+            "title": "诡术妖姬",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "妖姬",
+                "lb"
+            ]
+        },
+        {
+            "key": "Illaoi",
+            "en": "Illaoi",
+            "cn": "俄洛伊",
+            "title": "海兽祭司",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "触手妈",
+                "章鱼妈",
+                "带派",
+                "东北雨姐"
+            ]
+        },
+        {
+            "key": "Gangplank",
+            "en": "Gangplank",
+            "cn": "普朗克",
+            "title": "海洋之灾",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "船长",
+                "gp",
+                "特朗普"
+            ]
+        },
+        {
+            "key": "Lillia",
+            "en": "Lillia",
+            "cn": "莉莉娅",
+            "title": "含羞蓓蕾",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "小鹿",
+                "福瑞"
+            ]
+        },
+        {
+            "key": "Ashe",
+            "en": "Ashe",
+            "cn": "艾希",
+            "title": "寒冰射手",
+            "positions": [
+                "BOTTOM",
+                "UTILITY"
+            ],
+            "aliases": [
+                "寒冰",
+                "刮痧师傅"
+            ]
+        },
+        {
+            "key": "TahmKench",
+            "en": "Tahm Kench",
+            "cn": "塔姆",
+            "title": "河流之王",
+            "positions": [
+                "TOP",
+                "UTILITY"
+            ],
+            "aliases": [
+                "蛤蟆"
+            ]
+        },
+        {
+            "key": "Annie",
+            "en": "Annie",
+            "cn": "安妮",
+            "title": "黑暗之女",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "火女"
+            ]
+        },
+        {
+            "key": "Nami",
+            "en": "Nami",
+            "cn": "娜美",
+            "title": "唤潮鲛姬",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "人鱼"
+            ]
+        },
+        {
+            "key": "Rakan",
+            "en": "Rakan",
+            "cn": "洛",
+            "title": "幻翎",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Renekton",
+            "en": "Renekton",
+            "cn": "雷克顿",
+            "title": "荒漠屠夫",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "鳄鱼"
+            ]
+        },
+        {
+            "key": "Locke",
+            "en": "Locke",
+            "cn": "洛克",
+            "title": "灰烬驱魔人",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "咒术师"
+            ]
+        },
+        {
+            "key": "Thresh",
+            "en": "Thresh",
+            "cn": "锤石",
+            "title": "魂锁典狱长",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "钩子"
+            ]
+        },
+        {
+            "key": "Rumble",
+            "en": "Rumble",
+            "cn": "兰博",
+            "title": "机械公敌",
+            "positions": [
+                "TOP",
+                "MIDDLE"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Yasuo",
+            "en": "Yasuo",
+            "cn": "亚索",
+            "title": "疾风剑豪",
+            "positions": [
+                "TOP",
+                "MIDDLE",
+                "BOTTOM"
+            ],
+            "aliases": [
+                "风男",
+                "快乐风男",
+                "托儿索"
+            ]
+        },
+        {
+            "key": "Sylas",
+            "en": "Sylas",
+            "cn": "塞拉斯",
+            "title": "解脱者",
+            "positions": [
+                "TOP",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "偷男"
+            ]
+        },
+        {
+            "key": "Zyra",
+            "en": "Zyra",
+            "cn": "婕拉",
+            "title": "荆棘之兴",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "打人草"
+            ]
+        },
+        {
+            "key": "Ahri",
+            "en": "Ahri",
+            "cn": "阿狸",
+            "title": "九尾妖狐",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "狐狸",
+                "九尾"
+            ]
+        },
+        {
+            "key": "Gragas",
+            "en": "Gragas",
+            "cn": "古拉加斯",
+            "title": "酒桶",
+            "positions": [
+                "TOP",
+                "JUNGLE",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "啤酒人"
+            ]
+        },
+        {
+            "key": "Trundle",
+            "en": "Trundle",
+            "cn": "特朗德尔",
+            "title": "巨魔之王",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "巨魔"
+            ]
+        },
+        {
+            "key": "TwistedFate",
+            "en": "Twisted Fate",
+            "cn": "崔斯特",
+            "title": "卡牌大师",
+            "positions": [
+                "TOP",
+                "MIDDLE",
+                "BOTTOM"
+            ],
+            "aliases": [
+                "卡牌",
+                "tf"
+            ]
+        },
+        {
+            "key": "Kennen",
+            "en": "Kennen",
+            "cn": "凯南",
+            "title": "狂暴之心",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "电耗子",
+                "电老鼠",
+                "芜湖哈哈"
+            ]
+        },
+        {
+            "key": "Briar",
+            "en": "Briar",
+            "cn": "贝蕾亚",
+            "title": "狂厄蔷薇",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "玉足",
+                "小贝"
+            ]
+        },
+        {
+            "key": "Nidalee",
+            "en": "Nidalee",
+            "cn": "奈德丽",
+            "title": "狂野女猎手",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "豹女",
+                "nid",
+                "小熊软糖",
+                "豹子"
+            ]
+        },
+        {
+            "key": "Olaf",
+            "en": "Olaf",
+            "cn": "奥拉夫",
+            "title": "狂战士",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "斧头"
+            ]
+        },
+        {
+            "key": "Akali",
+            "en": "Akali",
+            "cn": "阿卡丽",
+            "title": "离群之刺",
+            "positions": [
+                "TOP",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "akl",
+                "恐怖飞镖人"
+            ]
+        },
+        {
+            "key": "Renata",
+            "en": "Renata Glasc",
+            "cn": "烈娜塔 · 戈拉斯克",
+            "title": "炼金男爵",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Singed",
+            "en": "Singed",
+            "cn": "辛吉德",
+            "title": "炼金术士",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "炼金"
+            ]
+        },
+        {
+            "key": "Gwen",
+            "en": "Gwen",
+            "cn": "格温",
+            "title": "灵罗娃娃",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "剪刀妹"
+            ]
+        },
+        {
+            "key": "Mel",
+            "en": "Mel",
+            "cn": "梅尔",
+            "title": "流光镜影",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "三体人"
+            ]
+        },
+        {
+            "key": "Shyvana",
+            "en": "Shyvana",
+            "cn": "希瓦娜",
+            "title": "龙血武姬",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "龙女"
+            ]
+        },
+        {
+            "key": "Tristana",
+            "en": "Tristana",
+            "cn": "崔丝塔娜",
+            "title": "麦林炮手",
+            "positions": [
+                "MIDDLE",
+                "BOTTOM"
+            ],
+            "aliases": [
+                "小炮",
+                "炮娘",
+                "波比"
+            ]
+        },
+        {
+            "key": "Tryndamere",
+            "en": "Tryndamere",
+            "cn": "泰达米尔",
+            "title": "蛮族之王",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "蛮王",
+                "trynd",
+                "蛮子",
+                "苍蝇"
+            ]
+        },
+        {
+            "key": "LeeSin",
+            "en": "Lee Sin",
+            "cn": "李青",
+            "title": "盲僧",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "瞎子",
+                "lee",
+                "leesin"
+            ]
+        },
+        {
+            "key": "Gnar",
+            "en": "Gnar",
+            "cn": "纳尔",
+            "title": "迷失之牙",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "福瑞"
+            ]
+        },
+        {
+            "key": "Milio",
+            "en": "Milio",
+            "cn": "米利欧",
+            "title": "明烛",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "丁真"
+            ]
+        },
+        {
+            "key": "Yuumi",
+            "en": "Yuumi",
+            "cn": "悠米",
+            "title": "魔法猫咪",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "猫咪"
+            ]
+        },
+        {
+            "key": "Cassiopeia",
+            "en": "Cassiopeia",
+            "cn": "卡西奥佩娅",
+            "title": "魔蛇之拥",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "蛇女",
+                "cass"
+            ]
+        },
+        {
+            "key": "Zoe",
+            "en": "Zoe",
+            "cn": "佐伊",
+            "title": "暮光星灵",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Shen",
+            "en": "Shen",
+            "cn": "慎",
+            "title": "暮光之眼",
+            "positions": [
+                "TOP",
+                "UTILITY"
+            ],
+            "aliases": [
+                "腰子",
+                "肾"
+            ]
+        },
+        {
+            "key": "Yorick",
+            "en": "Yorick",
+            "cn": "约里克",
+            "title": "牧魂人",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "掘墓"
+            ]
+        },
+        {
+            "key": "KSante",
+            "en": "K'Sante",
+            "cn": "奎桑提",
+            "title": "纳祖芒荣耀",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "老黑",
+                "老内",
+                "男同"
+            ]
+        },
+        {
+            "key": "Xayah",
+            "en": "Xayah",
+            "cn": "霞",
+            "title": "逆羽",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "鸟人"
+            ]
+        },
+        {
+            "key": "Alistar",
+            "en": "Alistar",
+            "cn": "阿利斯塔",
+            "title": "牛头酋长",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "牛头",
+                "老牛",
+                "公牛角力"
+            ]
+        },
+        {
+            "key": "Maokai",
+            "en": "Maokai",
+            "cn": "茂凯",
+            "title": "扭曲树精",
+            "positions": [
+                "JUNGLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "大树",
+                "树精",
+                "树人"
+            ]
+        },
+        {
+            "key": "Swain",
+            "en": "Swain",
+            "cn": "斯维因",
+            "title": "诺克萨斯统领",
+            "positions": [
+                "MIDDLE",
+                "BOTTOM",
+                "UTILITY"
+            ],
+            "aliases": [
+                "乌鸦"
+            ]
+        },
+        {
+            "key": "Darius",
+            "en": "Darius",
+            "cn": "德莱厄斯",
+            "title": "诺克萨斯之手",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "诺手",
+                "诺克",
+                "质检员"
+            ]
+        },
+        {
+            "key": "Rammus",
+            "en": "Rammus",
+            "cn": "拉莫斯",
+            "title": "披甲龙龟",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "龙龟",
+                "rammus",
+                "王八",
+                "龟"
+            ]
+        },
+        {
+            "key": "Caitlyn",
+            "en": "Caitlyn",
+            "cn": "凯特琳",
+            "title": "皮城女警",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "女警",
+                "cait",
+                "爆头"
+            ]
+        },
+        {
+            "key": "Vi",
+            "en": "Vi",
+            "cn": "蔚",
+            "title": "皮城执法官",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "楚雨荨",
+                "女拳"
+            ]
+        },
+        {
+            "key": "Viego",
+            "en": "Viego",
+            "cn": "佛耶戈",
+            "title": "破败之王",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "破败王",
+                "痛",
+                "佛爷"
+            ]
+        },
+        {
+            "key": "MonkeyKing",
+            "en": "Wukong",
+            "cn": "孙悟空",
+            "title": "齐天大圣",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "猴子",
+                "悟空",
+                "猴"
+            ]
+        },
+        {
+            "key": "Sona",
+            "en": "Sona",
+            "cn": "娑娜",
+            "title": "琴瑟仙女",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "琴女",
+                "哑巴",
+                "赔钱"
+            ]
+        },
+        {
+            "key": "Camille",
+            "en": "Camille",
+            "cn": "卡蜜尔",
+            "title": "青钢影",
+            "positions": [
+                "TOP",
+                "UTILITY"
+            ],
+            "aliases": [
+                "卡密尔"
+            ]
+        },
+        {
+            "key": "Draven",
+            "en": "Draven",
+            "cn": "德莱文",
+            "title": "荣耀行刑官",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "文森特"
+            ]
+        },
+        {
+            "key": "Malphite",
+            "en": "Malphite",
+            "cn": "墨菲特",
+            "title": "熔岩巨兽",
+            "positions": [
+                "TOP",
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "石头人",
+                "石头",
+                "大聪明"
+            ]
+        },
+        {
+            "key": "Azir",
+            "en": "Azir",
+            "cn": "阿兹尔",
+            "title": "沙漠皇帝",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "沙皇",
+                "黄鸡"
+            ]
+        },
+        {
+            "key": "Samira",
+            "en": "Samira",
+            "cn": "莎弥拉",
+            "title": "沙漠玫瑰",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Nasus",
+            "en": "Nasus",
+            "cn": "内瑟斯",
+            "title": "沙漠死神",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "狗头",
+                "nasus"
+            ]
+        },
+        {
+            "key": "Ornn",
+            "en": "Ornn",
+            "cn": "奥恩",
+            "title": "山隐之焰",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "铁匠",
+                "山羊"
+            ]
+        },
+        {
+            "key": "MissFortune",
+            "en": "Miss Fortune",
+            "cn": "厄运小姐",
+            "title": "赏金猎人",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "赏金",
+                "好运姐",
+                "女枪",
+                "mf",
+                "哈哈姐",
+                "厄运姐"
+            ]
+        },
+        {
+            "key": "Skarner",
+            "en": "Skarner",
+            "cn": "斯卡纳",
+            "title": "上古领主",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "蝎子"
+            ]
+        },
+        {
+            "key": "Nautilus",
+            "en": "Nautilus",
+            "cn": "诺提勒斯",
+            "title": "深海泰坦",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "泰坦",
+                "钩子"
+            ]
+        },
+        {
+            "key": "KogMaw",
+            "en": "Kog'Maw",
+            "cn": "克格莫",
+            "title": "深渊巨口",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "大嘴",
+                "kog"
+            ]
+        },
+        {
+            "key": "Zac",
+            "en": "Zac",
+            "cn": "扎克",
+            "title": "生化魔人",
+            "positions": [
+                "TOP",
+                "JUNGLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "果冻人",
+                "粑粑人"
+            ]
+        },
+        {
+            "key": "Poppy",
+            "en": "Poppy",
+            "cn": "波比",
+            "title": "圣锤之毅",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "小炮"
+            ]
+        },
+        {
+            "key": "Lucian",
+            "en": "Lucian",
+            "cn": "卢锡安",
+            "title": "圣枪游侠",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "奥巴马",
+                "lucian",
+                "卢仙"
+            ]
+        },
+        {
+            "key": "Zilean",
+            "en": "Zilean",
+            "cn": "基兰",
+            "title": "时光守护者",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "时光",
+                "时光老头"
+            ]
+        },
+        {
+            "key": "Ekko",
+            "en": "Ekko",
+            "cn": "艾克",
+            "title": "时间刺客",
+            "positions": [
+                "JUNGLE",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "时间管理大师",
+                "罗志祥"
+            ]
+        },
+        {
+            "key": "Udyr",
+            "en": "Udyr",
+            "cn": "乌迪尔",
+            "title": "兽灵行者",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Leona",
+            "en": "Leona",
+            "cn": "蕾欧娜",
+            "title": "曙光女神",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "日女",
+                "太阳女孩",
+                "女坦"
+            ]
+        },
+        {
+            "key": "Aurora",
+            "en": "Aurora",
+            "cn": "阿萝拉",
+            "title": "双界灵兔",
+            "positions": [
+                "TOP",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "兔子",
+                "小兔"
+            ]
+        },
+        {
+            "key": "Karthus",
+            "en": "Karthus",
+            "cn": "卡尔萨斯",
+            "title": "死亡颂唱者",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "死歌"
+            ]
+        },
+        {
+            "key": "Ezreal",
+            "en": "Ezreal",
+            "cn": "伊泽瑞尔",
+            "title": "探险家",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "伊泽",
+                "ez",
+                "小黄毛",
+                "贾洛轻羽"
+            ]
+        },
+        {
+            "key": "Karma",
+            "en": "Karma",
+            "cn": "卡尔玛",
+            "title": "天启者",
+            "positions": [
+                "TOP",
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "扇子妈",
+                "撒and撒"
+            ]
+        },
+        {
+            "key": "Ambessa",
+            "en": "Ambessa",
+            "cn": "安蓓萨",
+            "title": "铁血狼母",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "狼母",
+                "超雄"
+            ]
+        },
+        {
+            "key": "Mordekaiser",
+            "en": "Mordekaiser",
+            "cn": "莫德凯撒",
+            "title": "铁铠冥魂",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "铁男",
+                "铁铠",
+                "morde"
+            ]
+        },
+        {
+            "key": "Evelynn",
+            "en": "Evelynn",
+            "cn": "伊芙琳",
+            "title": "痛苦之拥",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "寡妇",
+                "eve",
+                "伊芙",
+                "if0"
+            ]
+        },
+        {
+            "key": "Taric",
+            "en": "Taric",
+            "cn": "塔里克",
+            "title": "瓦洛兰之盾",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "宝石",
+                "taric",
+                "男同"
+            ]
+        },
+        {
+            "key": "Neeko",
+            "en": "Neeko",
+            "cn": "妮蔻",
+            "title": "万花通灵",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "变色龙"
+            ]
+        },
+        {
+            "key": "Sett",
+            "en": "Sett",
+            "cn": "瑟提",
+            "title": "腕豪",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "劲夫"
+            ]
+        },
+        {
+            "key": "Sion",
+            "en": "Sion",
+            "cn": "赛恩",
+            "title": "亡灵战神",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "老司机",
+                "sion"
+            ]
+        },
+        {
+            "key": "Jayce",
+            "en": "Jayce",
+            "cn": "杰斯",
+            "title": "未来守护者",
+            "positions": [
+                "TOP",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "议员",
+                "塔利斯议员"
+            ]
+        },
+        {
+            "key": "Twitch",
+            "en": "Twitch",
+            "cn": "图奇",
+            "title": "瘟疫之源",
+            "positions": [
+                "BOTTOM",
+                "UTILITY"
+            ],
+            "aliases": [
+                "老鼠"
+            ]
+        },
+        {
+            "key": "MasterYi",
+            "en": "Master Yi",
+            "cn": "易",
+            "title": "无极剑圣",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "剑圣",
+                "yi",
+                "易大师",
+                "js"
+            ]
+        },
+        {
+            "key": "Fiora",
+            "en": "Fiora",
+            "cn": "菲奥娜",
+            "title": "无双剑姬",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "剑姬"
+            ]
+        },
+        {
+            "key": "Urgot",
+            "en": "Urgot",
+            "cn": "厄加特",
+            "title": "无畏战车",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "螃蟹"
+            ]
+        },
+        {
+            "key": "Jax",
+            "en": "Jax",
+            "cn": "贾克斯",
+            "title": "武器大师",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "武器",
+                "jax"
+            ]
+        },
+        {
+            "key": "Jhin",
+            "en": "Jhin",
+            "cn": "烬",
+            "title": "戏命师",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "瘸子",
+                "4444"
+            ]
+        },
+        {
+            "key": "Lulu",
+            "en": "Lulu",
+            "cn": "璐璐",
+            "title": "仙灵女巫",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "露露",
+                "紫皮大蒜"
+            ]
+        },
+        {
+            "key": "Veigar",
+            "en": "Veigar",
+            "cn": "维迦",
+            "title": "邪恶小法师",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "小法师"
+            ]
+        },
+        {
+            "key": "Bard",
+            "en": "Bard",
+            "cn": "巴德",
+            "title": "星界游神",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "哑巴"
+            ]
+        },
+        {
+            "key": "Seraphine",
+            "en": "Seraphine",
+            "cn": "萨勒芬妮",
+            "title": "星籁歌姬",
+            "positions": [
+                "BOTTOM",
+                "UTILITY"
+            ],
+            "aliases": [
+                "芬妮",
+                "酸辣粉",
+                "茶",
+                "歌姬"
+            ]
+        },
+        {
+            "key": "Vladimir",
+            "en": "Vladimir",
+            "cn": "弗拉基米尔",
+            "title": "猩红收割者",
+            "positions": [
+                "TOP",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "吸血鬼",
+                "vlad"
+            ]
+        },
+        {
+            "key": "RekSai",
+            "en": "Rek'Sai",
+            "cn": "雷克塞",
+            "title": "虚空遁地兽",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "挖掘机",
+                "挖机"
+            ]
+        },
+        {
+            "key": "Chogath",
+            "en": "Cho'Gath",
+            "cn": "科加斯",
+            "title": "虚空恐惧",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "大虫子",
+                "虫子"
+            ]
+        },
+        {
+            "key": "Khazix",
+            "en": "Kha'Zix",
+            "cn": "卡兹克",
+            "title": "虚空掠夺者",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "螳螂",
+                "khazix"
+            ]
+        },
+        {
+            "key": "Belveth",
+            "en": "Bel'Veth",
+            "cn": "卑尔维斯",
+            "title": "虚空女皇",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "大杯",
+                "大悲",
+                "大卑",
+                "阿尔卑斯"
+            ]
+        },
+        {
+            "key": "Malzahar",
+            "en": "Malzahar",
+            "cn": "玛尔扎哈",
+            "title": "虚空先知",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "蚂蚱"
+            ]
+        },
+        {
+            "key": "Kassadin",
+            "en": "Kassadin",
+            "cn": "卡萨丁",
+            "title": "虚空行者",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "卡萨"
+            ]
+        },
+        {
+            "key": "Kaisa",
+            "en": "Kai'Sa",
+            "cn": "卡莎",
+            "title": "虚空之女",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "蟑螂婆"
+            ]
+        },
+        {
+            "key": "Velkoz",
+            "en": "Vel'Koz",
+            "cn": "维克兹",
+            "title": "虚空之眼",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "大眼"
+            ]
+        },
+        {
+            "key": "Nunu",
+            "en": "Nunu & Willump",
+            "cn": "努努和威朗普",
+            "title": "雪原双子",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "雪人",
+                "努努"
+            ]
+        },
+        {
+            "key": "Pyke",
+            "en": "Pyke",
+            "cn": "派克",
+            "title": "血港鬼影",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "水鬼",
+                "泥鳅",
+                "钩子"
+            ]
+        },
+        {
+            "key": "Teemo",
+            "en": "Teemo",
+            "cn": "提莫",
+            "title": "迅捷斥候",
+            "positions": [
+                "TOP",
+                "JUNGLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "蘑菇",
+                "提百万"
+            ]
+        },
+        {
+            "key": "Taliyah",
+            "en": "Taliyah",
+            "cn": "塔莉垭",
+            "title": "岩雀",
+            "positions": [
+                "JUNGLE",
+                "MIDDLE"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Hwei",
+            "en": "Hwei",
+            "cn": "彗",
+            "title": "异画师",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "画师",
+                "华为",
+                "小画家"
+            ]
+        },
+        {
+            "key": "Corki",
+            "en": "Corki",
+            "cn": "库奇",
+            "title": "英勇投弹手",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "飞机"
+            ]
+        },
+        {
+            "key": "Kayn",
+            "en": "Kayn",
+            "cn": "凯隐",
+            "title": "影流之镰",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "红凯",
+                "蓝凯"
+            ]
+        },
+        {
+            "key": "Zed",
+            "en": "Zed",
+            "cn": "劫",
+            "title": "影流之主",
+            "positions": [
+                "JUNGLE",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "飞镖人"
+            ]
+        },
+        {
+            "key": "Akshan",
+            "en": "Akshan",
+            "cn": "阿克尚",
+            "title": "影哨",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "阿克曼",
+                "阿三"
+            ]
+        },
+        {
+            "key": "Nocturne",
+            "en": "Nocturne",
+            "cn": "魔腾",
+            "title": "永恒梦魇",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "梦魇",
+                "noc"
+            ]
+        },
+        {
+            "key": "Kindred",
+            "en": "Kindred",
+            "cn": "千珏",
+            "title": "永猎双子",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "Qiyana",
+            "en": "Qiyana",
+            "cn": "奇亚娜",
+            "title": "元素女皇",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "超模"
+            ]
+        },
+        {
+            "key": "Fiddlesticks",
+            "en": "Fiddlesticks",
+            "cn": "费德提克",
+            "title": "远古恐惧",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "稻草人"
+            ]
+        },
+        {
+            "key": "Xerath",
+            "en": "Xerath",
+            "cn": "泽拉斯",
+            "title": "远古巫灵",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "棺材板"
+            ]
+        },
+        {
+            "key": "Sivir",
+            "en": "Sivir",
+            "cn": "希维尔",
+            "title": "战争女神",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": [
+                "轮子妈"
+            ]
+        },
+        {
+            "key": "Hecarim",
+            "en": "Hecarim",
+            "cn": "赫卡里姆",
+            "title": "战争之影",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "人马",
+                "hec"
+            ]
+        },
+        {
+            "key": "Blitzcrank",
+            "en": "Blitzcrank",
+            "cn": "布里茨",
+            "title": "蒸汽机器人",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "机器人",
+                "钩子"
+            ]
+        },
+        {
+            "key": "Galio",
+            "en": "Galio",
+            "cn": "加里奥",
+            "title": "正义巨像",
+            "positions": [
+                "MIDDLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "石像鬼",
+                "城墙"
+            ]
+        },
+        {
+            "key": "Kayle",
+            "en": "Kayle",
+            "cn": "凯尔",
+            "title": "正义天使",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "天使"
+            ]
+        },
+        {
+            "key": "Elise",
+            "en": "Elise",
+            "cn": "伊莉丝",
+            "title": "蜘蛛女皇",
+            "positions": [
+                "JUNGLE"
+            ],
+            "aliases": [
+                "蜘蛛",
+                "蜘蛛女",
+                "伊内丝"
+            ]
+        },
+        {
+            "key": "Soraka",
+            "en": "Soraka",
+            "cn": "索拉卡",
+            "title": "众星之子",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "奶妈",
+                "星妈"
+            ]
+        },
+        {
+            "key": "AurelionSol",
+            "en": "Aurelion Sol",
+            "cn": "奥瑞利安·索尔",
+            "title": "铸星龙王",
+            "positions": [
+                "MIDDLE"
+            ],
+            "aliases": [
+                "龙王",
+                "索尔"
+            ]
+        },
+        {
+            "key": "Zeri",
+            "en": "Zeri",
+            "cn": "泽丽",
+            "title": "祖安花火",
+            "positions": [
+                "BOTTOM"
+            ],
+            "aliases": []
+        },
+        {
+            "key": "DrMundo",
+            "en": "Dr. Mundo",
+            "cn": "蒙多医生",
+            "title": "祖安狂人",
+            "positions": [
+                "TOP"
+            ],
+            "aliases": [
+                "蒙多",
+                "mundo"
+            ]
+        },
+        {
+            "key": "Warwick",
+            "en": "Warwick",
+            "cn": "沃里克",
+            "title": "祖安怒兽",
+            "positions": [
+                "TOP",
+                "JUNGLE"
+            ],
+            "aliases": [
+                "狼人",
+                "狼",
+                "范德尔"
+            ]
+        },
+        {
+            "key": "Rell",
+            "en": "Rell",
+            "cn": "芮尔",
+            "title": "镕铁少女",
+            "positions": [
+                "UTILITY"
+            ],
+            "aliases": [
+                "铁女",
+                "瑞尔"
+            ]
+        },
+        {
+            "key": "Amumu",
+            "en": "Amumu",
+            "cn": "阿木木",
+            "title": "殇之木乃伊",
+            "positions": [
+                "JUNGLE",
+                "UTILITY"
+            ],
+            "aliases": [
+                "木乃伊",
+                "绷带人"
+            ]
+        },
+        {
+            "key": "Diana",
+            "en": "Diana",
+            "cn": "黛安娜",
+            "title": "皎月女神",
+            "positions": [
+                "JUNGLE",
+                "MIDDLE"
+            ],
+            "aliases": [
+                "皎月"
+            ]
+        }
+    ]
+}

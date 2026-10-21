@@ -1,0 +1,27 @@
+name: lol-civil-war
+
+services:
+  app:
+    image: ${LCW_IMAGE:-lol-civil-war:latest}
+    container_name: ${LCW_CONTAINER_NAME:-lol-civil-war}
+    restart: unless-stopped
+    ports:
+      # 默认只监听本机，由宿主机 Nginx/Caddy 反向代理并负责 HTTPS
+      - "${LCW_BIND:-127.0.0.1:18020}:8080"
+    env_file:
+      - .env
+    environment:
+      LCW_ADDR: ":8080"
+      LCW_DATA_DIR: /data
+    volumes:
+      - data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  data:
+    name: ${LCW_VOLUME:-lol-civil-war-data}

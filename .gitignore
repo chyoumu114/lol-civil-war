@@ -1,0 +1,39 @@
+# 编译产物
+/bin/
+/lol-civil-war
+/lol-civil-war.exe
+/cmd/lol-civil-war/lol-civil-war
+
+# 运行时数据（SQLite、上传临时文件、英雄图标缓存）
+/data/
+*.db
+*.db-wal
+*.db-shm
+
+# 前端依赖与产物（internal/webui/dist 只提交占位文件）
+/web/node_modules/
+/web/dist/
+/internal/webui/dist/*
+!/internal/webui/dist/README.txt
+
+# 私密配置：只提交 *.example
+.env
+.env.*
+!.env.example
+deploy/.env
+deploy/.env.*
+!deploy/.env.example
+deploy/servers.json
+deploy/known_hosts
+
+# 本地开发
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+~$*.docx
+
+# 测试与覆盖率
+coverage.out
+*.test

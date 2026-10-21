@@ -1,0 +1,467 @@
+:root {
+  --app-primary: #ff4655;
+  --app-gold: #d4af37;
+  --app-bg: #080b10;
+  --app-card: #10161f;
+  --app-card-2: #0b1118;
+  --app-text: #e8edf5;
+  --app-muted: #8b98a8;
+  --app-border: #232d3a;
+  --app-radius: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(1100px 600px at 8% -10%, rgba(255, 70, 85, 0.13), transparent 60%),
+    radial-gradient(900px 520px at 100% 0%, rgba(212, 175, 55, 0.07), transparent 55%),
+    #080b10;
+  background-attachment: fixed;
+  overflow-x: hidden;
+  color: var(--app-text);
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Arco 深色主题变量：整体走黑 + 红/金战斗风 */
+body[arco-theme='dark'] {
+  --arcoblue-6: 255, 70, 85;
+  --arcoblue-5: 255, 94, 108;
+  --arcoblue-7: 214, 48, 64;
+  --primary-6: 255, 70, 85;
+  --color-bg-1: #080b10;
+  --color-bg-2: #10161f;
+  --color-bg-3: #16202b;
+  --color-bg-4: #1c2834;
+  --color-border-1: #1b2530;
+  --color-border-2: #273342;
+  --color-text-1: #e8edf5;
+  --color-text-2: #b9c5d3;
+  --color-text-3: #8b98a8;
+  --color-fill-1: #0b1118;
+  --color-fill-2: #131b25;
+  --color-fill-3: #1a2430;
+  --color-fill-4: #22303e;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.page {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 20px 96px;
+}
+
+.page-title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.page-subtitle {
+  margin: 0 0 20px;
+  color: var(--app-muted);
+  font-size: 14px;
+}
+
+.card {
+  background: linear-gradient(180deg, #121a24 0%, #0d131b 100%);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.38);
+}
+
+/* Arco Card / 下拉 / 弹窗在深色下再压暗一点 */
+.arco-card {
+  background: var(--app-card);
+  border: 1px solid var(--app-border);
+}
+.arco-card-header {
+  border-bottom-color: var(--app-border) !important;
+}
+.arco-modal {
+  background: #0f1620;
+  border: 1px solid var(--app-border);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
+}
+.arco-dropdown-menu {
+  background: #10161f;
+  border: 1px solid var(--app-border);
+}
+
+.muted {
+  color: var(--app-muted);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- 顶部品牌 / 导航（覆盖各页面 scoped 浅色样式） ---- */
+.brand-mark {
+  background: linear-gradient(135deg, #ff4655, #d4af37) !important;
+}
+.brand-text {
+  color: var(--app-text);
+}
+.civil-header {
+  background: rgba(8, 11, 16, 0.88) !important;
+  border-bottom: 1px solid var(--app-border) !important;
+  backdrop-filter: blur(14px);
+}
+.group-chip {
+  background: #151d27 !important;
+  color: #b9c5d3 !important;
+}
+.desktop-nav a {
+  color: #9aa7b6 !important;
+}
+.desktop-nav a:hover {
+  background: #17202b !important;
+  color: #fff !important;
+}
+.desktop-nav a.active {
+  background: rgba(255, 70, 85, 0.14) !important;
+  color: #ff6b78 !important;
+}
+.user-chip {
+  color: var(--app-text) !important;
+}
+.user-chip:hover {
+  background: #17202b !important;
+}
+.mobile-tab {
+  background: rgba(8, 11, 16, 0.96) !important;
+  border-top: 1px solid var(--app-border) !important;
+}
+.mobile-tab a {
+  color: #8b98a8 !important;
+}
+.mobile-tab a.active {
+  color: #ff6b78 !important;
+}
+
+/* ---- 入口 / 登录 / 首页 ---- */
+.entry {
+  background:
+    radial-gradient(900px 520px at 50% 0%, rgba(255, 70, 85, 0.12), transparent 65%),
+    #080b10 !important;
+}
+.entry-brand {
+  color: #ff6b78 !important;
+}
+.entry-back {
+  color: #8b98a8 !important;
+}
+.entry-error {
+  color: #ff6b78 !important;
+}
+.login-badge {
+  background: linear-gradient(135deg, #ff4655, #d4af37) !important;
+}
+.login-title {
+  color: var(--app-text);
+}
+.login-error {
+  color: #ff6b78 !important;
+}
+.home {
+  background:
+    radial-gradient(900px 480px at 15% 10%, rgba(255, 70, 85, 0.22), transparent 60%),
+    radial-gradient(800px 500px at 90% 85%, rgba(212, 175, 55, 0.12), transparent 60%),
+    #07090d !important;
+}
+.app-icon {
+  background: linear-gradient(135deg, #ff4655, #d4af37) !important;
+}
+.app-card {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+.app-card:hover {
+  border-color: rgba(255, 70, 85, 0.55) !important;
+  box-shadow: 0 10px 40px rgba(255, 70, 85, 0.12);
+}
+
+/* ---- 组织列表 ---- */
+.event-card {
+  background: linear-gradient(180deg, #121a24 0%, #0d131b 100%) !important;
+  border: 1px solid var(--app-border) !important;
+}
+.event-card:hover {
+  border-color: rgba(255, 70, 85, 0.5) !important;
+  box-shadow: 0 14px 40px rgba(255, 70, 85, 0.1) !important;
+}
+.event-region,
+.event-format,
+.event-foot {
+  color: #8b98a8 !important;
+}
+.event-meta {
+  color: #b9c5d3 !important;
+}
+.event-note {
+  background: #0b1118 !important;
+  color: #b9c5d3 !important;
+}
+.event-score {
+  color: #ff6b78 !important;
+}
+.event-open {
+  color: #ff6b78 !important;
+}
+.event-title {
+  color: #fff;
+}
+
+/* ---- 排行榜 / 个人 ---- */
+.ranking-table {
+  background: var(--app-card) !important;
+  border: 1px solid var(--app-border) !important;
+}
+.rank-header {
+  background: #0b1118 !important;
+  color: #8b98a8 !important;
+}
+.rank-row {
+  border-top: 1px solid var(--app-border) !important;
+}
+.rank-row:not(.rank-header):hover {
+  background: #141c26 !important;
+}
+.rank-total {
+  color: #ff6b78 !important;
+}
+.rank-qq {
+  color: #8b98a8 !important;
+}
+.player-head {
+  background: var(--app-card) !important;
+  border: 1px solid var(--app-border);
+}
+.winrate-num {
+  color: #ff6b78 !important;
+}
+.stat-card {
+  background: linear-gradient(180deg, #121a24, #0d131b) !important;
+  border: 1px solid var(--app-border);
+}
+.mate-row,
+.recent-row {
+  border-bottom-color: var(--app-border) !important;
+}
+.recent-win.win {
+  color: #4ade80 !important;
+  background: rgba(74, 222, 128, 0.1) !important;
+}
+.recent-win.lose {
+  color: #ff6b78 !important;
+  background: rgba(255, 70, 85, 0.12) !important;
+}
+.champ-card {
+  background: var(--app-card) !important;
+  border: 1px solid var(--app-border);
+}
+.champ-en {
+  color: #667488 !important;
+}
+
+/* ---- 对局记录 ---- */
+.module-card,
+.winner-box {
+  background: var(--app-card) !important;
+  border: 1px solid var(--app-border);
+}
+.team-block {
+  background: #0b1118 !important;
+  border-color: var(--app-border) !important;
+}
+.team-block.blue .team-head {
+  background: rgba(22, 93, 255, 0.18) !important;
+  color: #7aa7ff !important;
+}
+.team-block.red .team-head {
+  background: rgba(255, 70, 85, 0.16) !important;
+  color: #ff8a94 !important;
+}
+.team-row {
+  border-top-color: var(--app-border) !important;
+}
+.champion-btn {
+  background: #10161f !important;
+  border-color: var(--app-border) !important;
+  color: #b9c5d3 !important;
+}
+.ban-slot {
+  background: #0b1118 !important;
+  border-color: var(--app-border) !important;
+}
+.ban-slot.empty {
+  color: #667488 !important;
+}
+.rofl-table {
+  border-color: var(--app-border) !important;
+}
+.rofl-header {
+  background: #0b1118 !important;
+  color: #8b98a8 !important;
+}
+.rofl-row {
+  border-top-color: var(--app-border) !important;
+}
+.rofl-note {
+  background: #0b1118 !important;
+  color: #8b98a8 !important;
+}
+.module-hint,
+.match-tip,
+.rofl-meta {
+  color: #8b98a8 !important;
+}
+
+/* ---- 编排 / 匹配弹窗 ---- */
+.editor-team,
+.plan-side {
+  border-color: var(--app-border) !important;
+  background: #0b1118;
+}
+.editor-team.blue .editor-head {
+  background: rgba(22, 93, 255, 0.18) !important;
+  color: #7aa7ff !important;
+}
+.editor-team.red .editor-head {
+  background: rgba(255, 70, 85, 0.16) !important;
+  color: #ff8a94 !important;
+}
+.editor-row,
+.side-row {
+  border-top-color: var(--app-border) !important;
+}
+.plan-side.blue .side-head {
+  background: rgba(22, 93, 255, 0.18) !important;
+  color: #7aa7ff !important;
+}
+.plan-side.red .side-head {
+  background: rgba(255, 70, 85, 0.16) !important;
+  color: #ff8a94 !important;
+}
+.target-line {
+  background: #0b1118 !important;
+  color: var(--app-text);
+}
+.edit-tip,
+.editor-tip {
+  background: rgba(255, 70, 85, 0.08) !important;
+}
+
+
+/* ---- 英雄选择器 / 段位标签 ---- */
+.champion-icon {
+  background: #0b1118 !important;
+}
+.champion-cell {
+  background: #0b1118 !important;
+  border-color: var(--app-border) !important;
+}
+.champion-cell:hover {
+  background: #141c26 !important;
+  border-color: rgba(255, 70, 85, 0.55) !important;
+}
+.champion-cell.selected {
+  background: rgba(255, 70, 85, 0.12) !important;
+  border-color: #ff4655 !important;
+}
+.rank-badge {
+  background: #151d27 !important;
+  color: #c9d4e2 !important;
+}
+.rank-empty {
+  color: var(--app-muted) !important;
+}
+.rank-diamond {
+  color: #7aa7ff !important;
+  background: rgba(22, 93, 255, 0.14) !important;
+}
+.rank-master {
+  color: #d4af37 !important;
+  background: rgba(212, 175, 55, 0.12) !important;
+}
+.rank-platinum,
+.rank-emerald {
+  color: #56c596 !important;
+  background: rgba(86, 197, 150, 0.12) !important;
+}
+.rank-gold {
+  color: #d4af37 !important;
+  background: rgba(212, 175, 55, 0.12) !important;
+}
+
+/* 移动端：底部 tab 留出安全距离 */
+@media (max-width: 768px) {
+  .page {
+    padding: 16px 12px 88px;
+  }
+  .page-title {
+    font-size: 20px;
+  }
+}
+
+/* 移动端筛选/指标 tab 不换行，可横向滚动 */
+@media (max-width: 768px) {
+  .status-tabs,
+  .metric-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+  .status-tabs .arco-radio-button,
+  .metric-tabs .arco-radio-button {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .status-tabs::-webkit-scrollbar,
+  .metric-tabs::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* 移动端弹窗统一自适应（Arco Modal 默认固定宽度会在窄屏溢出） */
+@media (max-width: 768px) {
+  .arco-modal {
+    width: 92vw !important;
+    max-width: 92vw !important;
+  }
+  .arco-modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+}
+
+/* PC 端统一内容宽度：屏幕的 80%，移动端保持全宽 */
+@media (min-width: 769px) {
+  .page {
+    width: 80vw;
+    max-width: none;
+  }
+}

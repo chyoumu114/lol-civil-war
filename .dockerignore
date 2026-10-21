@@ -1,0 +1,27 @@
+.git
+.gitignore
+.github
+.idea
+.vscode
+
+# 依赖与构建产物
+web/node_modules
+web/dist
+internal/webui/dist
+data
+bin
+*.db
+*.db-wal
+*.db-shm
+*.exe
+
+# 私密配置与文档
+deploy/.env
+deploy/.env.*
+!deploy/.env.example
+deploy/servers.json
+docs
+
+# 系统垃圾
+.DS_Store
+Thumbs.db

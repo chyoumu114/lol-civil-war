@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="LOL 内战工具">
+  <defs>
+    <linearGradient id="lolcivilwar" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#165dff"/>
+      <stop offset="1" stop-color="#722ed1"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="url(#lolcivilwar)"/>
+  <path d="M17 21h6v16h11v6H17V21Z" fill="#fff"/>
+  <path d="M41 21h6v22h-6V21Z" fill="#fff" opacity=".92"/>
+  <circle cx="44" cy="17" r="3" fill="#fff" opacity=".92"/>
+</svg>
