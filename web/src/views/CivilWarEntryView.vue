@@ -30,6 +30,18 @@
       </div>
 
       <div class="entry-tip">群号需已在服务端白名单中开通，首次进入会自动创建群。</div>
+
+      <a-collapse class="entry-notice" :bordered="false">
+        <a-collapse-item key="notice" header="进群须知（点击展开）">
+          <div class="entry-notice-body">
+            <p>本工具是群友自发的非官方内战组织工具，与腾讯、拳头游戏无关。</p>
+            <p>数据仅用于本群内战组织与统计，请勿填写账号密码等敏感信息。</p>
+            <p>服务由个人利用业余时间维护，可能因服务器、费用、备案或不可抗力暂停、调整或停止。若确实无法继续运营，会尽量提前在群内通知，并留出时间让大家保存需要的记录。</p>
+            <p>工具按现状提供，不对服务连续性或数据永久保存作承诺；因服务中断造成的不便，敬请谅解。</p>
+            <p>使用本工具即表示理解并同意以上说明；如不同意，请停止使用。</p>
+          </div>
+        </a-collapse-item>
+      </a-collapse>
     </div>
   </div>
 </template>
@@ -151,5 +163,30 @@ async function enter() {
   margin-top: 24px;
   color: var(--app-muted);
   font-size: 12px;
+}
+.entry-notice {
+  margin-top: 10px;
+  background: transparent;
+}
+.entry-notice :deep(.arco-collapse-item-header) {
+  padding: 8px 0;
+  border: none;
+  color: var(--app-muted);
+  font-size: 12px;
+}
+.entry-notice :deep(.arco-collapse-item-content) {
+  padding-left: 0;
+  background: transparent;
+}
+.entry-notice-body {
+  color: var(--app-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.entry-notice-body p {
+  margin: 0 0 6px;
+}
+.entry-notice-body p:last-child {
+  margin-bottom: 0;
 }
 </style>

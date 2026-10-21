@@ -43,6 +43,7 @@
               <template #icon><icon-check /></template>
               结束比赛
             </a-button>
+            <a-button class="share-button" @click="openShare">分享</a-button>
           </div>
         </div>
 
@@ -352,6 +353,13 @@
           :game-no="matchGameNo"
           @changed="reload"
         />
+        <a-modal v-model:visible="shareVisible" title="分享组织" :width="520" :footer="false">
+          <a-textarea v-model="shareText" :auto-size="{ minRows: 4, maxRows: 8 }" />
+          <div class="share-actions">
+            <a-button @click="resetShare">恢复默认</a-button>
+            <a-button type="primary" @click="copyShare">复制</a-button>
+          </div>
+        </a-modal>
       </template>
 
       <a-result v-else-if="error" status="error" :title="error" />
@@ -386,6 +394,8 @@ const detail = ref(null)
 const registerVisible = ref(false)
 const rosterEditorVisible = ref(false)
 const editVisible = ref(false)
+const shareVisible = ref(false)
+const shareText = ref('')
 const playerVisible = ref(false)
 const matchModalVisible = ref(false)
 const matchGameNo = ref(0)
@@ -595,6 +605,56 @@ function openMatch(gameNo) {
   matchModalVisible.value = true
 }
 
+function defaultShareText() {
+  const event = detail.value?.event
+  if (!event) return ''
+  return `【${eventDisplayTitle(event)}】报名截止日期：${formatDateTime(event.signupDeadline)}  点击链接报名 ${window.location.href}`
+}
+
+function openShare() {
+  shareText.value = defaultShareText()
+  shareVisible.value = true
+}
+
+function resetShare() {
+  shareText.value = defaultShareText()
+}
+
+function fallbackCopy(text) {
+  const textarea = document.createElement('textarea')
+  textarea.value = text
+  textarea.style.position = 'fixed'
+  textarea.style.opacity = '0'
+  document.body.appendChild(textarea)
+  textarea.select()
+  const ok = document.execCommand('copy')
+  document.body.removeChild(textarea)
+  if (!ok) throw new Error('copy failed')
+}
+
+async function copyShare() {
+  const text = shareText.value.trim()
+  if (!text) {
+    Message.warning('请输入要分享的内容')
+    return
+  }
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+    } else {
+      fallbackCopy(text)
+    }
+  } catch (err) {
+    try {
+      fallbackCopy(text)
+    } catch (fallbackErr) {
+      Message.error('复制失败，请手动选择内容复制')
+      return
+    }
+  }
+  Message.success('已复制到剪贴板')
+}
+
 function endEvent() {
   Modal.confirm({
     title: '结束比赛',
@@ -636,6 +696,15 @@ onMounted(reload)
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  margin-top: 12px;
+}
+.share-button {
+  margin-left: auto;
+}
+.share-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 12px;
 }
 .section-card {

@@ -60,7 +60,12 @@
 
         <a-card :bordered="false" class="section" title="最近对局">
           <div v-if="data.recent.length" class="recent-list">
-            <div v-for="item in data.recent" :key="item.matchId" class="recent-row">
+            <div
+              v-for="item in data.recent"
+              :key="item.matchId"
+              class="recent-row"
+              @click="openMatch(item)"
+            >
               <span class="recent-win" :class="item.win ? 'win' : 'lose'">{{ item.win ? '胜' : '负' }}</span>
               <span class="recent-champion">{{ championLabel(item.champion) }}</span>
               <span class="recent-pos"><PositionIcon :code="item.position" :size="18" /></span>
@@ -72,6 +77,13 @@
           </div>
           <a-empty v-else description="暂无对局记录" />
         </a-card>
+
+        <MatchRecordModal
+          v-model:visible="matchModalVisible"
+          :event-id="matchEventId"
+          :game-no="matchGameNo"
+          @changed="load"
+        />
       </template>
 
       <a-result v-else-if="error" status="error" :title="error" />
@@ -82,6 +94,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import MatchRecordModal from '../components/MatchRecordModal.vue'
 import PositionIcon from '../components/PositionIcon.vue'
 import { api } from '../api'
 import { session } from '../stores/session'
@@ -94,6 +107,9 @@ const router = useRouter()
 const loading = ref(true)
 const error = ref('')
 const data = ref(null)
+const matchModalVisible = ref(false)
+const matchEventId = ref(0)
+const matchGameNo = ref(0)
 
 const base = computed(() => `/civil-war/${route.params.group}`)
 
@@ -107,6 +123,12 @@ function championLabel(champion) {
 
 function openPlayer(memberId) {
   router.push(`${base.value}/players/${memberId}`)
+}
+
+function openMatch(item) {
+  matchEventId.value = item.eventId
+  matchGameNo.value = item.gameNo
+  matchModalVisible.value = true
 }
 
 async function load() {
@@ -216,6 +238,10 @@ onMounted(load)
   padding: 8px 0;
   border-bottom: 1px dashed #f2f3f5;
   font-size: 12px;
+  cursor: pointer;
+}
+.recent-row:hover {
+  background: #f7f8fa;
 }
 .recent-row:last-child {
   border-bottom: none;
