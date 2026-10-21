@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---------- 前端构建 ----------
-FROM node:22-alpine AS web
+FROM node:22.23.4-alpine AS web
 WORKDIR /src/web
 ARG NPM_REGISTRY=https://registry.npmjs.org
 COPY web/package.json web/package-lock.json ./

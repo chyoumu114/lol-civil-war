@@ -61,7 +61,7 @@ curl -fsS http://127.0.0.1:18020/api/health
 
 ### 从源码运行
 
-需要 Go 1.26+、Node.js 22+、一个可用的 MySQL 8 实例与数据库：
+需要 Go 1.26+、Node.js 22.23.4+、一个可用的 MySQL 8 实例与数据库：
 
 ```bash
 make build
