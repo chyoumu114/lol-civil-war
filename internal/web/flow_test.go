@@ -357,7 +357,10 @@ func TestCivilWarFlow(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK || !bytes.Contains(body, []byte("id=\"app\"")) {
+	// 未执行前端构建时返回“前端尚未构建”提示页，也算 SPA 回落正常。
+	built := bytes.Contains(body, []byte("id=\"app\""))
+	placeholder := bytes.Contains(body, []byte("前端尚未构建"))
+	if resp.StatusCode != http.StatusOK || (!built && !placeholder) {
 		t.Fatalf("SPA 回落异常: %d", resp.StatusCode)
 	}
 }
