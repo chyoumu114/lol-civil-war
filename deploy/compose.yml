@@ -3,6 +3,13 @@ name: lol-civil-war
 services:
   app:
     image: ${LCW_IMAGE:-lol-civil-war:latest}
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+      args:
+        VERSION: ${LCW_VERSION:-dev}
+        GOPROXY: ${DOCKER_GOPROXY:-https://proxy.golang.org,direct}
+        NPM_REGISTRY: ${DOCKER_NPM_REGISTRY:-https://registry.npmjs.org}
     container_name: ${LCW_CONTAINER_NAME:-lol-civil-war}
     restart: unless-stopped
     depends_on:

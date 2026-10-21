@@ -43,8 +43,8 @@ cp .env.example .env
 #    MYSQL_ROOT_PASSWORD=随机强口令
 #    （QQ 登录还需 LCW_QQ_APP_ID / LCW_QQ_APP_KEY）
 
-# 4. 启动（首次会自动拉取镜像并初始化数据库）
-docker compose up -d
+# 4. 启动（首次会构建应用镜像、启动 MySQL 并自动建表）
+docker compose up -d --build
 
 # 5. 检查
 docker compose ps
@@ -53,7 +53,8 @@ curl -fsS http://127.0.0.1:18020/api/health
 
 浏览器访问 `http://localhost:18020/`。数据在 `lol-civil-war-mysql-data` 卷里。
 
-> 应用镜像默认使用 `lol-civil-war:latest`。生产建议改为你发布到镜像仓库的具体 tag：
+> Compose 自带 `build`：从源码部署时用 `docker compose up -d --build` 即可。
+> 生产也可以改为你发布到镜像仓库的具体镜像，此时用 `docker compose up -d` 直接拉取：
 > `LCW_IMAGE=<registry>/<namespace>/lol-civil-war:v0.2.0`。
 
 ### 从源码运行

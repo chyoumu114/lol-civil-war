@@ -23,8 +23,8 @@ cp .env.example .env
 # 3. 编辑 .env（必填项见下表）
 ${EDITOR:-vi} .env
 
-# 4. 启动：应用 + MySQL
-docker compose up -d
+# 4. 启动：构建应用镜像 + 启动 MySQL
+docker compose up -d --build
 
 # 5. 查看状态与健康检查
 docker compose ps
@@ -48,6 +48,7 @@ curl -fsS http://127.0.0.1:18020/api/health
 | `LCW_IMAGE` | `<registry>/<namespace>/lol-civil-war:v0.2.0` | 应用镜像 |
 
 > `.env` 含凭据，已在 `.gitignore` 中；不要提交。
+> 从源码构建时，如果访问 Go/npm 官方源很慢，可在 `.env` 打开 `DOCKER_GOPROXY` / `DOCKER_NPM_REGISTRY` 注释并使用国内镜像。
 > 如果服务器拉取 Docker Hub 很慢，可把 `MYSQL_IMAGE` 换成私有仓库中的 mysql 8.4 镜像。
 
 ## 3. 反向代理与 HTTPS
