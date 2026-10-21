@@ -1,4 +1,4 @@
-// Package store 是 SQLite 持久化层：只做数据读写，不写业务规则。
+// Package store 是 MySQL 持久化层：只做数据读写，不写业务规则。
 //
 // 表结构与 Laravel 版本一一对应，便于对照迁移；时间统一存 UTC 毫秒，
 // 对外由 service 层转换为业务时区。
@@ -11,12 +11,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/go-sql-driver/mysql"
 )
 
 //go:embed schema.sql
@@ -45,39 +43,40 @@ type execer interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
-// Open 打开（必要时创建）数据库并执行建表语句。
-func Open(path string) (*Store, error) {
-	if dir := filepath.Dir(path); dir != "" && dir != "." {
-		if err := os.MkdirAll(dir, 0o750); err != nil {
-			return nil, fmt.Errorf("创建数据目录失败: %w", err)
+// Open 连接 MySQL 并初始化表结构。启动阶段会重试，等待 MySQL 就绪。
+func Open(dsn string) (*Store, error) {
+	if strings.TrimSpace(dsn) == "" {
+		return nil, errors.New("数据库 DSN 不能为空")
+	}
+
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("打开 MySQL 失败: %w", err)
+	}
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(3 * time.Minute)
+
+	var pingErr error
+	for attempt := 0; attempt < 15; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		pingErr = db.PingContext(ctx)
+		cancel()
+		if pingErr == nil {
+			break
+		}
+		if attempt < 14 {
+			time.Sleep(2 * time.Second)
 		}
 	}
-
-	dsn := path
-	if !strings.HasPrefix(dsn, "file:") {
-		dsn = "file:" + filepath.ToSlash(dsn)
-	}
-	sep := "?"
-	if strings.Contains(dsn, "?") {
-		sep = "&"
-	}
-	dsn += sep + "_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)&_pragma=foreign_keys(1)"
-
-	db, err := sql.Open("sqlite", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("打开数据库失败: %w", err)
-	}
-	db.SetMaxOpenConns(8)
-	db.SetMaxIdleConns(4)
-	db.SetConnMaxLifetime(time.Hour)
-
-	if err := db.Ping(); err != nil {
+	if pingErr != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("连接数据库失败: %w", err)
+		return nil, fmt.Errorf("连接 MySQL 失败: %w", pingErr)
 	}
-	if _, err := db.Exec(string(mustSchema())); err != nil {
+
+	if err := initSchema(db); err != nil {
 		_ = db.Close()
-		return nil, fmt.Errorf("初始化数据库失败: %w", err)
+		return nil, err
 	}
 	return &Store{db: db}, nil
 }
@@ -113,6 +112,37 @@ func (s *Store) Tx(ctx context.Context, fn func(tx *Store) error) error {
 		return fmt.Errorf("提交事务失败: %w", err)
 	}
 	return nil
+}
+
+// initSchema 按分号拆分 schema.sql 并逐条执行（不开启 multiStatements）。
+func initSchema(db *sql.DB) error {
+	for _, statement := range schemaStatements() {
+		if _, err := db.Exec(statement); err != nil {
+			return fmt.Errorf("初始化数据库失败: %w", err)
+		}
+	}
+	return nil
+}
+
+func schemaStatements() []string {
+	raw := string(mustSchema())
+	var cleaned strings.Builder
+	for _, line := range strings.Split(raw, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "--") {
+			continue
+		}
+		cleaned.WriteString(line)
+		cleaned.WriteString("\n")
+	}
+
+	parts := strings.Split(cleaned.String(), ";")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if statement := strings.TrimSpace(part); statement != "" {
+			out = append(out, statement)
+		}
+	}
+	return out
 }
 
 func mustSchema() []byte {

@@ -273,8 +273,8 @@ func (s *Store) UpsertRating(ctx context.Context, r Rating) error {
 	now := time.Now().UTC()
 	_, err := s.conn().ExecContext(ctx, `
 		INSERT INTO match_player_ratings (match_id, rater_member_id, target_member_id, score, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-		ON CONFLICT(match_id, rater_member_id, target_member_id) DO UPDATE SET score = excluded.score, updated_at = excluded.updated_at`,
+		VALUES (?, ?, ?, ?, ?, ?) AS new
+		ON DUPLICATE KEY UPDATE score = new.score, updated_at = new.updated_at`,
 		r.MatchID, r.RaterMemberID, r.TargetMemberID, r.Score, millis(now), millis(now))
 	if err != nil {
 		return fmt.Errorf("保存评分失败: %w", err)

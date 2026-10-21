@@ -36,9 +36,9 @@ Third-party notices / 第三方声明
    third-party artwork. Replace them if you need a fully GPL-clean asset set.
 
 3. Go dependencies
-   modernc.org/sqlite and its transitive dependencies are distributed under
-   their respective licenses (BSD-3-Clause and others). See go.sum and the
-   module cache for details.
+   github.com/go-sql-driver/mysql is distributed under the Mozilla Public
+   License 2.0 (MPL-2.0); filippo.io/edwards25519 is distributed under
+   BSD-3-Clause. See go.sum and the module cache for details.
 
 4. Frontend dependencies
    Vue, Arco Design Vue, axios, Vite and their transitive dependencies are

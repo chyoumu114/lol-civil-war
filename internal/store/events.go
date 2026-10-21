@@ -118,8 +118,8 @@ func (s *Store) EventListData(ctx context.Context, groupID int64, limit int) ([]
 	stats := map[int64]MatchStats{}
 	matchRows, err := s.conn().QueryContext(ctx, `
 		SELECT m.event_id, count(*),
-		       coalesce(sum(CASE WHEN m.blue_win = 1 THEN 1 ELSE 0 END), 0),
-		       coalesce(sum(CASE WHEN m.blue_win = 0 THEN 1 ELSE 0 END), 0)
+		       CAST(coalesce(sum(CASE WHEN m.blue_win = 1 THEN 1 ELSE 0 END), 0) AS SIGNED),
+		       CAST(coalesce(sum(CASE WHEN m.blue_win = 0 THEN 1 ELSE 0 END), 0) AS SIGNED)
 		FROM matches m JOIN events e ON e.id = m.event_id
 		WHERE e.group_id = ? GROUP BY m.event_id`, groupID)
 	if err != nil {

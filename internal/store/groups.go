@@ -17,21 +17,21 @@ const memberColumns = `
 // GroupByPublicKey 按公开 key 查询群。
 func (s *Store) GroupByPublicKey(ctx context.Context, key string) (Group, error) {
 	row := s.conn().QueryRowContext(ctx,
-		`SELECT id, qq_group_number, public_key, name, created_at, updated_at FROM groups WHERE public_key = ?`, key)
+		`SELECT id, qq_group_number, public_key, name, created_at, updated_at FROM qq_groups WHERE public_key = ?`, key)
 	return scanGroup(row)
 }
 
 // GroupByNumber 按 QQ 群号查询群。
 func (s *Store) GroupByNumber(ctx context.Context, number string) (Group, error) {
 	row := s.conn().QueryRowContext(ctx,
-		`SELECT id, qq_group_number, public_key, name, created_at, updated_at FROM groups WHERE qq_group_number = ?`, number)
+		`SELECT id, qq_group_number, public_key, name, created_at, updated_at FROM qq_groups WHERE qq_group_number = ?`, number)
 	return scanGroup(row)
 }
 
 // GroupByID 按主键查询群。
 func (s *Store) GroupByID(ctx context.Context, id int64) (Group, error) {
 	row := s.conn().QueryRowContext(ctx,
-		`SELECT id, qq_group_number, public_key, name, created_at, updated_at FROM groups WHERE id = ?`, id)
+		`SELECT id, qq_group_number, public_key, name, created_at, updated_at FROM qq_groups WHERE id = ?`, id)
 	return scanGroup(row)
 }
 
@@ -47,9 +47,8 @@ func (s *Store) EnsureGroup(ctx context.Context, number, publicKey string) (Grou
 
 	now := time.Now().UTC()
 	_, err = s.conn().ExecContext(ctx,
-		`INSERT INTO groups (qq_group_number, public_key, name, created_at, updated_at)
-		 VALUES (?, ?, NULL, ?, ?)
-		 ON CONFLICT(qq_group_number) DO NOTHING`,
+		`INSERT IGNORE INTO qq_groups (qq_group_number, public_key, name, created_at, updated_at)
+		 VALUES (?, ?, NULL, ?, ?)`,
 		number, publicKey, millis(now), millis(now))
 	if err != nil {
 		return Group{}, fmt.Errorf("创建群失败: %w", err)
@@ -99,9 +98,8 @@ func (s *Store) EnsureMember(ctx context.Context, groupID, userID int64, fallbac
 	}
 	now := time.Now().UTC()
 	_, err = s.conn().ExecContext(ctx,
-		`INSERT INTO group_members (group_id, user_id, nickname, positions, created_at, updated_at)
-		 VALUES (?, ?, ?, '[]', ?, ?)
-		 ON CONFLICT(group_id, user_id) DO NOTHING`,
+		`INSERT IGNORE INTO group_members (group_id, user_id, nickname, positions, created_at, updated_at)
+		 VALUES (?, ?, ?, '[]', ?, ?)`,
 		groupID, userID, fallbackNickname, millis(now), millis(now))
 	if err != nil {
 		return Member{}, fmt.Errorf("创建成员资料失败: %w", err)

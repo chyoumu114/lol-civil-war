@@ -26,21 +26,21 @@ func (s *Store) UpsertRegistration(ctx context.Context, r Registration) (Registr
 		INSERT INTO registrations (event_id, member_id, rank_region, rank_tier, rank_division, rank_lp,
 			main_position, sub_positions, sub_rank_region, sub_rank_tier, sub_rank_division, sub_rank_lp,
 			note, is_spectator, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(event_id, member_id) DO UPDATE SET
-			rank_region = excluded.rank_region,
-			rank_tier = excluded.rank_tier,
-			rank_division = excluded.rank_division,
-			rank_lp = excluded.rank_lp,
-			main_position = excluded.main_position,
-			sub_positions = excluded.sub_positions,
-			sub_rank_region = excluded.sub_rank_region,
-			sub_rank_tier = excluded.sub_rank_tier,
-			sub_rank_division = excluded.sub_rank_division,
-			sub_rank_lp = excluded.sub_rank_lp,
-			note = excluded.note,
-			is_spectator = excluded.is_spectator,
-			updated_at = excluded.updated_at`,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AS new
+		ON DUPLICATE KEY UPDATE
+			rank_region = new.rank_region,
+			rank_tier = new.rank_tier,
+			rank_division = new.rank_division,
+			rank_lp = new.rank_lp,
+			main_position = new.main_position,
+			sub_positions = new.sub_positions,
+			sub_rank_region = new.sub_rank_region,
+			sub_rank_tier = new.sub_rank_tier,
+			sub_rank_division = new.sub_rank_division,
+			sub_rank_lp = new.sub_rank_lp,
+			note = new.note,
+			is_spectator = new.is_spectator,
+			updated_at = new.updated_at`,
 		r.EventID, r.MemberID, r.RankRegion, r.RankTier, nullIntPtr(r.RankDivision), r.RankLP,
 		nullString(r.MainPosition), jsonList(r.SubPositions), nullString(r.SubRankRegion),
 		nullString(r.SubRankTier), nullIntPtr(r.SubRankDivision), r.SubRankLP,
@@ -125,8 +125,8 @@ func (s *Store) UpsertRoster(ctx context.Context, eventID int64, payload json.Ra
 	now := time.Now().UTC()
 	_, err := s.conn().ExecContext(ctx, `
 		INSERT INTO event_rosters (event_id, payload, created_at, updated_at)
-		VALUES (?, ?, ?, ?)
-		ON CONFLICT(event_id) DO UPDATE SET payload = excluded.payload, updated_at = excluded.updated_at`,
+		VALUES (?, ?, ?, ?) AS new
+		ON DUPLICATE KEY UPDATE payload = new.payload, updated_at = new.updated_at`,
 		eventID, string(payload), millis(now), millis(now))
 	if err != nil {
 		return fmt.Errorf("保存阵容失败: %w", err)
@@ -158,9 +158,8 @@ func (s *Store) SetEventSpectator(ctx context.Context, eventID, memberID int64, 
 	if watching {
 		now := time.Now().UTC()
 		_, err := s.conn().ExecContext(ctx, `
-			INSERT INTO event_spectators (event_id, member_id, created_at, updated_at)
-			VALUES (?, ?, ?, ?)
-			ON CONFLICT(event_id, member_id) DO NOTHING`,
+			INSERT IGNORE INTO event_spectators (event_id, member_id, created_at, updated_at)
+			VALUES (?, ?, ?, ?)`,
 			eventID, memberID, millis(now), millis(now))
 		return err
 	}

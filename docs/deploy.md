@@ -1,23 +1,39 @@
 # 部署指南
 
 目标：把服务部署到一台 Linux 服务器，用 HTTPS 域名对外提供访问。
+应用与 MySQL 都由 Docker Compose 管理，数据库不对外暴露端口。
 
 ## 1. 环境要求
 
-- Linux + Docker 24+（可选 Docker Compose v2）
-- 1 核 1G 起即可（SQLite 与 Go 常驻内存很小）
+- Linux + Docker 24+、Docker Compose v2
+- 1 核 1G 起（应用常驻内存很小；MySQL 建议至少 512MB）
 - 一个可用的域名；QQ 登录要求回调地址可访问（HTTPS）
 - 宿主 Nginx 或 Caddy 负责 80/443 与证书
 
-## 2. 准备配置
+## 2. 按顺序执行
 
 ```bash
+# 1. 拉取代码
 git clone https://github.com/chyoumu114/lol-civil-war.git
 cd lol-civil-war/deploy
+
+# 2. 复制配置
 cp .env.example .env
+
+# 3. 编辑 .env（必填项见下表）
+${EDITOR:-vi} .env
+
+# 4. 启动：应用 + MySQL
+docker compose up -d
+
+# 5. 查看状态与健康检查
+docker compose ps
+curl -fsS http://127.0.0.1:18020/api/health
 ```
 
-编辑 `.env`，至少填写：
+看到 `{"ok":true,...}` 即启动成功。
+
+`.env` 必填项：
 
 | 变量 | 示例 | 说明 |
 | --- | --- | --- |
@@ -26,33 +42,15 @@ cp .env.example .env
 | `LCW_QQ_APP_ID` / `LCW_QQ_APP_KEY` | — | QQ 互联凭据 |
 | `LCW_DEV_LOGIN` | `false` | 生产必须关闭 |
 | `LCW_BIND` | `127.0.0.1:18020` | 只监听本机，交给反向代理 |
+| `MYSQL_DATABASE` | `lol_civil_war` | 数据库名 |
+| `MYSQL_USER` / `MYSQL_PASSWORD` | `lcw` / 随机强口令 | 应用账号 |
+| `MYSQL_ROOT_PASSWORD` | 随机强口令 | root 口令，仅备份/维护用 |
+| `LCW_IMAGE` | `<registry>/<namespace>/lol-civil-war:v0.2.0` | 应用镜像 |
 
 > `.env` 含凭据，已在 `.gitignore` 中；不要提交。
+> 如果服务器拉取 Docker Hub 很慢，可把 `MYSQL_IMAGE` 换成私有仓库中的 mysql 8.4 镜像。
 
-## 3. 启动
-
-```bash
-docker compose up -d
-docker compose ps
-curl -fsS http://127.0.0.1:18020/api/health
-```
-
-看到 `{"ok":true,...}` 即启动成功。数据在 `lol-civil-war-data` 卷里。
-
-如果没有仓库、只想部署现成镜像：
-
-```bash
-docker run -d --name lol-civil-war \
-  -p 127.0.0.1:18020:8080 \
-  -v lol-civil-war-data:/data \
-  -e LCW_ALLOWED_GROUPS=123456789 \
-  -e LCW_BASE_URL=https://lol.example.com \
-  -e LCW_QQ_APP_ID=你的AppID \
-  -e LCW_QQ_APP_KEY=你的AppKey \
-  <镜像地址>:<tag>
-```
-
-## 4. 反向代理与 HTTPS
+## 3. 反向代理与 HTTPS
 
 ### Nginx
 
@@ -97,7 +95,7 @@ certbot --nginx -d lol.example.com
 
 > `LCW_BASE_URL` 必须与浏览器地址一致（协议 + 域名），否则 QQ 回调和 Secure Cookie 会异常。
 
-## 5. QQ 互联配置
+## 4. QQ 互联配置
 
 1. 在 <https://connect.qq.com/> 创建「网站应用」；
 2. 回调地址填 `https://lol.example.com/auth/qq/callback`；
@@ -106,9 +104,9 @@ certbot --nginx -d lol.example.com
 
 QQ 互联只返回 OpenID，不返回 QQ 号；用户首次进群时补全 QQ 号（群内展示用）。
 
-## 6. 构建与发布镜像（ACR）
+## 5. 构建与发布镜像（ACR）
 
-本地发布脚本会构建镜像并推送到阿里云 ACR：
+本地发布脚本会构建应用镜像并推送到阿里云 ACR：
 
 ```bash
 # deploy/.env 中填写（不要提交）：
@@ -117,7 +115,7 @@ QQ 互联只返回 OpenID，不返回 QQ 号；用户首次进群时补全 QQ �
 #   ACR_REPO=lol-civil-war
 #   ACR_USERNAME=...
 #   ACR_PASSWORD=...
-scripts/publish.sh v1.0.0
+scripts/publish.sh v0.2.0
 ```
 
 国内构建加速（可选）：
@@ -125,53 +123,59 @@ scripts/publish.sh v1.0.0
 ```bash
 DOCKER_GOPROXY=https://goproxy.cn,direct \
 DOCKER_NPM_REGISTRY=https://registry.npmmirror.com \
-scripts/publish.sh v1.0.0
+scripts/publish.sh v0.2.0
 ```
 
 远程部署（可选，脚本会登录 ACR、拉镜像、重启并健康检查）：
 
 ```bash
 # deploy/.env.deploy：服务器与 ACR 信息
-# deploy/.env.prod：远端运行配置（LCW_*）
+# deploy/.env.prod：远端运行配置（LCW_* / MYSQL_*）
 scripts/deploy-remote.sh
 ```
 
-## 7. 备份与恢复
+## 6. 备份与恢复
 
-数据只有 SQLite 一个文件。最稳妥的方式是停容器后复制：
+MySQL 数据在命名卷 `lol-civil-war-mysql-data`。
+
+备份（`--single-transaction` 不需要停应用）：
+
+```bash
+cd /opt/lol-civil-war
+docker compose exec -T mysql sh -c \
+  'exec mysqldump -uroot -p"$MYSQL_ROOT_PASSWORD" --single-transaction --routines --triggers "$MYSQL_DATABASE"' \
+  > backup-$(date +%F).sql
+```
+
+恢复（建议先停应用，避免写入）：
 
 ```bash
 docker compose stop app
-docker run --rm -v lol-civil-war-data:/data -v "$PWD":/backup alpine \
-  sh -c 'cp /data/lol-civil-war.db /backup/lol-civil-war-$(date +%F).db'
+docker compose exec -T mysql sh -c \
+  'exec mysql -uroot -p"$MYSQL_ROOT_PASSWORD" "$MYSQL_DATABASE"' < backup-2026-10-21.sql
 docker compose start app
 ```
 
-也可以在线备份（需要 sqlite3）：
+上传的 `.rofl` 不落盘，无需单独备份。
+
+## 7. 升级
 
 ```bash
-docker run --rm -v lol-civil-war-data:/data -v "$PWD":/backup alpine \
-  sh -c 'apk add --no-cache sqlite >/dev/null && sqlite3 /data/lol-civil-war.db ".backup /backup/lol-civil-war-$(date +%F).db"'
-```
-
-恢复：停容器 → 把备份复制回卷内的 `/data/lol-civil-war.db`（同时删除 `-wal`/`-shm`）→ 启动。
-
-## 8. 升级
-
-```bash
-git pull
-cd deploy
-docker compose pull     # 如果用远程镜像
+cd /opt/lol-civil-war
+docker compose pull app
 docker compose up -d
 ```
 
-数据库结构使用 `CREATE TABLE IF NOT EXISTS`，小版本升级无需手工迁移；涉及表结构变更时会在发布说明中注明。
+数据库结构使用幂等的 `CREATE TABLE IF NOT EXISTS`，小版本升级无需手工迁移；涉及表结构变更时会在发布说明中注明。
+MySQL 版本固定在 `.env` 的 `MYSQL_IMAGE`，升级数据库大版本前先备份。
 
-## 9. 故障排查
+## 8. 故障排查
 
 | 现象 | 排查 |
 | --- | --- |
-| 访问 502 | `docker compose ps` / `docker compose logs --tail=100 app`；确认 `LCW_BIND` 与 proxy_pass 一致 |
+| 应用反复重启 | `docker compose logs --tail=100 app`；通常是数据库连不上或口令不对 |
+| MySQL 不健康 | `docker compose logs mysql`；确认 `.env` 的口令没有特殊字符未转义 |
+| 访问 502 | `docker compose ps`；确认 `LCW_BIND` 与 proxy_pass 一致 |
 | 登录后立刻掉线 | `LCW_BASE_URL` 的协议与访问协议是否一致；反向代理是否传 `X-Forwarded-Proto` |
 | QQ 登录 403 / redirect_uri 不合法 | QQ 后台回调地址与 `LCW_QQ_REDIRECT_URI` 必须完全一致 |
 | 写请求 419 | 浏览器没有带上 `XSRF-TOKEN`；确认同域访问、没有禁用 Cookie |
@@ -179,12 +183,14 @@ docker compose up -d
 | 头像不显示 | DataDragon CDN 不可达；可本地下载图标后挂载到 `/data/champions` |
 | 群号被拒绝 | 把群号加入 `LCW_ALLOWED_GROUPS` 并重启 |
 
-## 10. 安全清单
+## 9. 安全清单
 
 - [ ] `LCW_DEV_LOGIN=false`
 - [ ] 使用 HTTPS，`LCW_COOKIE_SECURE=auto` 或 `true`
 - [ ] `LCW_BIND=127.0.0.1:18020`，不要直接暴露到公网
+- [ ] MySQL 不发布宿主端口（Compose 默认如此）
+- [ ] `MYSQL_PASSWORD` / `MYSQL_ROOT_PASSWORD` 使用随机强口令
 - [ ] 群白名单只保留实际使用的群
 - [ ] `.env` 不提交、不共享；QQ AppKey 与数据库备份妥善保管
-- [ ] 定期备份数据卷
+- [ ] 定期备份数据库卷
 - [ ] 限制服务器 SSH 来源与权限

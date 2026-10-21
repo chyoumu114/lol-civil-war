@@ -48,9 +48,9 @@ echo "== 远端登录 ACR 并拉取镜像 =="
 if [ -n "${ACR_REGISTRY:-}" ] && [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
   printf '%s' "$ACR_PASSWORD" | "${SSH[@]}" "docker login '$ACR_REGISTRY' -u '$ACR_USERNAME' --password-stdin"
 fi
-"${SSH[@]}" "cd '$DEPLOY_DIR' && LCW_IMAGE='$LCW_IMAGE' docker compose -f compose.yml pull app && LCW_IMAGE='$LCW_IMAGE' docker compose -f compose.yml up -d"
+"${SSH[@]}" "cd '$DEPLOY_DIR' && LCW_IMAGE='$LCW_IMAGE' docker compose -f compose.yml pull && LCW_IMAGE='$LCW_IMAGE' docker compose -f compose.yml up -d"
 
 echo "== 健康检查 =="
-"${SSH[@]}" "for i in \$(seq 1 20); do curl -fsS http://127.0.0.1:$HEALTH_PORT/api/health && exit 0; sleep 2; done; echo '健康检查失败'; cd '$DEPLOY_DIR' && docker compose -f compose.yml logs --tail=80 app; exit 1"
+"${SSH[@]}" "for i in \$(seq 1 60); do curl -fsS http://127.0.0.1:$HEALTH_PORT/api/health && exit 0; sleep 2; done; echo '健康检查失败'; cd '$DEPLOY_DIR' && docker compose -f compose.yml logs --tail=80 app; exit 1"
 
 echo "完成：$LCW_IMAGE"

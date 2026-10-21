@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,9 +10,13 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
 
 	"github.com/chyoumu114/lol-civil-war/internal/config"
 	"github.com/chyoumu114/lol-civil-war/internal/service"
@@ -22,11 +27,41 @@ const testGroup = "123456789"
 
 func newTestServer(t *testing.T) (*httptest.Server, *store.Store) {
 	t.Helper()
+	baseDSN := strings.TrimSpace(os.Getenv("LCW_TEST_MYSQL_DSN"))
+	if baseDSN == "" {
+		t.Skip("未设置 LCW_TEST_MYSQL_DSN，跳过 MySQL 集成测试")
+	}
+	baseCfg, err := mysql.ParseDSN(baseDSN)
+	if err != nil {
+		t.Fatalf("LCW_TEST_MYSQL_DSN 不合法: %v", err)
+	}
+
+	// 用管理连接为本次测试创建独立数据库，测试结束删除，互不影响。
+	adminCfg := *baseCfg
+	adminCfg.DBName = ""
+	admin, err := sql.Open("mysql", adminCfg.FormatDSN())
+	if err != nil {
+		t.Fatalf("连接 MySQL 失败: %v", err)
+	}
+	admin.SetMaxOpenConns(1)
+
+	dbName := fmt.Sprintf("lcw_test_%d", time.Now().UnixNano())
+	if _, err := admin.Exec("CREATE DATABASE `" + dbName + "` CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci"); err != nil {
+		_ = admin.Close()
+		t.Fatalf("创建测试数据库失败（需要 CREATE 权限）: %v", err)
+	}
+
+	testCfg := *baseCfg
+	testCfg.DBName = dbName
+	testCfg.ParseTime = false
+	testCfg.Loc = time.UTC
+	dsn := testCfg.FormatDSN()
+
 	dir := t.TempDir()
 	cfg := &config.Config{
 		Addr:            "127.0.0.1:0",
 		DataDir:         dir,
-		DBPath:          filepath.Join(dir, "test.db"),
+		DBDSN:           dsn,
 		BaseURL:         "http://example.test",
 		TimeZone:        "Asia/Shanghai",
 		AllowedGroups:   []string{testGroup},
@@ -39,8 +74,10 @@ func newTestServer(t *testing.T) (*httptest.Server, *store.Store) {
 		DivisionStep:    100,
 		RoflMaxKB:       1024,
 	}
-	st, err := store.Open(cfg.DBPath)
+	st, err := store.Open(dsn)
 	if err != nil {
+		_, _ = admin.Exec("DROP DATABASE `" + dbName + "`")
+		_ = admin.Close()
 		t.Fatalf("打开数据库失败: %v", err)
 	}
 	app := service.New(cfg, st)
@@ -49,6 +86,8 @@ func newTestServer(t *testing.T) (*httptest.Server, *store.Store) {
 	t.Cleanup(func() {
 		ts.Close()
 		_ = st.Close()
+		_, _ = admin.Exec("DROP DATABASE `" + dbName + "`")
+		_ = admin.Close()
 	})
 	return ts, st
 }

@@ -4,7 +4,7 @@
 /lol-civil-war.exe
 /cmd/lol-civil-war/lol-civil-war
 
-# 运行时数据（SQLite、上传临时文件、英雄图标缓存）
+# 运行时数据（上传临时文件、英雄图标缓存）
 /data/
 *.db
 *.db-wal

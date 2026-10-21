@@ -5,6 +5,9 @@ services:
     image: ${LCW_IMAGE:-lol-civil-war:latest}
     container_name: ${LCW_CONTAINER_NAME:-lol-civil-war}
     restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
       # 默认只监听本机，由宿主机 Nginx/Caddy 反向代理并负责 HTTPS
       - "${LCW_BIND:-127.0.0.1:18020}:8080"
@@ -13,6 +16,12 @@ services:
     environment:
       LCW_ADDR: ":8080"
       LCW_DATA_DIR: /data
+      # 容器内通过服务名连 MySQL；口令复用 MYSQL_* 配置
+      LCW_DB_HOST: mysql
+      LCW_DB_PORT: "3306"
+      LCW_DB_USER: ${MYSQL_USER:-lcw}
+      LCW_DB_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+      LCW_DB_NAME: ${MYSQL_DATABASE:-lol_civil_war}
     volumes:
       - data:/data
     healthcheck:
@@ -22,6 +31,29 @@ services:
       start_period: 10s
       retries: 3
 
+  mysql:
+    image: ${MYSQL_IMAGE:-mysql:8.4}
+    container_name: ${MYSQL_CONTAINER_NAME:-lol-civil-war-mysql}
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lol_civil_war}
+      MYSQL_USER: ${MYSQL_USER:-lcw}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 15
+
 volumes:
   data:
     name: ${LCW_VOLUME:-lol-civil-war-data}
+  mysql-data:
+    name: ${LCW_MYSQL_VOLUME:-lol-civil-war-mysql-data}

@@ -24,16 +24,17 @@
 | 组件 | 选型 |
 | --- | --- |
 | 语言 | Go 1.26.x（标准库 `net/http`） |
-| 数据库 | SQLite（`modernc.org/sqlite`，纯 Go，无 CGO） |
+| 数据库 | MySQL 8.0+ / 8.4 LTS（`github.com/go-sql-driver/mysql`） |
 | 前端 | Vue 3 + Arco Design Vue + Vite，构建后 `go:embed` 进二进制 |
 | 部署 | 单容器，数据卷挂载 `/data` |
 
 生产拓扑：
 
 ```
-浏览器 ──HTTPS──> Nginx/Caddy ──> 127.0.0.1:18020 ──> lol-civil-war 容器
-                                                       ├─ /data/lol-civil-war.db
-                                                       └─ /data/champions（可选）
+浏览器 ──HTTPS──> Nginx/Caddy ──> 127.0.0.1:18020 ──> app 容器
+                                                       ├─ /data（上传临时文件、可选图标）
+                                                       └─ mysql:3306（内部网络）
+                                                             └─ 卷 lol-civil-war-mysql-data
 ```
 
 ## 3. 代码分层
@@ -47,7 +48,7 @@ internal/domain/         纯计算，不依赖 HTTP 与数据库
   rank/                  段位、大区、位置、战力
   rofl/                  ROFL/ROFL2 元数据解析
   roster/                自动匹配（回溯 + Top N）
-internal/store/          持久化：schema.sql、SQL 查询、事务
+internal/store/          MySQL 持久化：schema.sql、SQL 查询、事务
 internal/service/        应用服务：权限、事务编排、DTO
 internal/web/            路由、会话/CSRF、限流、静态资源
 internal/webui/          内嵌前端产物
@@ -61,7 +62,7 @@ web/                     Vue 3 源码
 | 表 | 说明 |
 | --- | --- |
 | `users` | 全局账号：`qq_openid` 唯一，`name`、`avatar`、`is_dev` |
-| `groups` | QQ 群：`qq_group_number` 唯一，`public_key` 唯一 |
+| `qq_groups` | QQ 群：`qq_group_number` 唯一，`public_key` 唯一（表名避开 MySQL 保留字 `groups`） |
 | `group_members` | 群内资料：`(group_id,user_id)` 唯一；QQ 号、昵称、段位、位置 |
 | `events` | 内战组织：大区、赛制、BP、报名截止、开赛时间、`ended_at` |
 | `registrations` | 报名/替补：`(event_id,member_id)` 唯一；主选/补位位置与两套段位 |
@@ -74,7 +75,8 @@ web/                     Vue 3 源码
 | `rofl_uploads` | 录像解析结果：`sha256` 唯一，`parsed` JSON |
 | `sessions` | 服务端会话：会话 id、用户、CSRF、OAuth 临时状态 |
 
-时间统一以 UTC 毫秒存储，对外输出按 `Asia/Shanghai` 的 ISO8601（带偏移）。
+所有表使用 InnoDB + `utf8mb4`；时间统一以 UTC 毫秒（BIGINT）存储，对外输出按 `Asia/Shanghai` 的 ISO8601（带偏移）。
+列表/对象字段使用 LONGTEXT 存 JSON；应用启动时执行幂等建表语句。
 
 ## 5. 登录与会话
 
@@ -147,7 +149,7 @@ web/                     Vue 3 源码
 
 ## 11. 关键决策
 
-1. **SQLite 单文件**：部署零依赖，适合小规模群工具；代价是不支持多副本。
+1. **MySQL 8**：与应用容器一起由 Compose 编排，数据卷持久化；比单文件嵌入式数据库更适合并发写入与后续扩展，代价是多一个数据库容器。
 2. **单二进制 + 内嵌前端**：不需要 Nginx 托管静态文件，不存在跨域与路径前缀问题。
 3. **保留 Cookie Session + CSRF**：与前端 axios 默认行为一致，避免引入 Token 存储与过期处理。
 4. **ROFL 不落盘**：只存 sha256 与解析结果，节省磁盘并天然去重。

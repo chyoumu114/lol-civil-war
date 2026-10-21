@@ -69,11 +69,13 @@ func (s *Store) StatsRows(ctx context.Context, groupID int64) ([]PlayerStat, err
 	rows, err := s.conn().QueryContext(ctx, `
 		SELECT p.member_id, gm.nickname, u.avatar, gm.qq_number,
 		       count(*),
-		       coalesce(sum(CASE WHEN p.win = 1 THEN 1 ELSE 0 END), 0),
-		       coalesce(sum(p.kills), 0), coalesce(sum(p.deaths), 0), coalesce(sum(p.assists), 0),
-		       coalesce(sum(p.cs), 0), coalesce(sum(p.gold), 0),
-		       coalesce(sum(p.damage_to_champions), 0), coalesce(sum(p.damage_taken), 0),
-		       coalesce(sum(p.vision_score), 0)
+		       CAST(coalesce(sum(CASE WHEN p.win = 1 THEN 1 ELSE 0 END), 0) AS SIGNED),
+		       CAST(coalesce(sum(p.kills), 0) AS SIGNED), CAST(coalesce(sum(p.deaths), 0) AS SIGNED),
+		       CAST(coalesce(sum(p.assists), 0) AS SIGNED),
+		       CAST(coalesce(sum(p.cs), 0) AS SIGNED), CAST(coalesce(sum(p.gold), 0) AS SIGNED),
+		       CAST(coalesce(sum(p.damage_to_champions), 0) AS SIGNED),
+		       CAST(coalesce(sum(p.damage_taken), 0) AS SIGNED),
+		       CAST(coalesce(sum(p.vision_score), 0) AS SIGNED)
 		FROM match_players p
 		JOIN matches m ON m.id = p.match_id
 		JOIN events e ON e.id = m.event_id
@@ -81,7 +83,7 @@ func (s *Store) StatsRows(ctx context.Context, groupID int64) ([]PlayerStat, err
 		LEFT JOIN users u ON u.id = gm.user_id
 		WHERE e.group_id = ? AND e.ended_at IS NOT NULL AND m.status = 'submitted'
 		  AND p.member_id IS NOT NULL
-		GROUP BY p.member_id
+		GROUP BY p.member_id, gm.nickname, u.avatar, gm.qq_number
 		LIMIT 100`, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("统计排行榜失败: %w", err)
@@ -108,7 +110,7 @@ func (s *Store) StatsRows(ctx context.Context, groupID int64) ([]PlayerStat, err
 func (s *Store) RatingRows(ctx context.Context, groupID int64) ([]MemberRating, error) {
 	rows, err := s.conn().QueryContext(ctx, `
 		SELECT r.target_member_id, gm.nickname, u.avatar, gm.qq_number,
-		       avg(r.score),
+		       CAST(avg(r.score) AS DOUBLE),
 		       count(DISTINCT r.rater_member_id)
 		FROM match_player_ratings r
 		JOIN matches m ON m.id = r.match_id

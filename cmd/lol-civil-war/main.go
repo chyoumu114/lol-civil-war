@@ -1,7 +1,7 @@
 // lol-civil-war：QQ 群《英雄联盟》内战组织工具。
 //
-// 单二进制提供 JSON API + 内嵌前端静态资源 + SQLite 持久化，
-// 不依赖 MySQL/Redis，适合一台小内存服务器用一条 docker run 启动。
+// 单二进制提供 JSON API + 内嵌前端静态资源，数据持久化到 MySQL 8，
+// 不依赖 Redis，适合一台小服务器用 docker compose 启动。
 package main
 
 import (
@@ -50,7 +50,7 @@ func main() {
 		slog.Warn("未配置群白名单（LCW_ALLOWED_GROUPS），所有群都将被拒绝")
 	}
 
-	st, err := store.Open(cfg.DBPath)
+	st, err := store.Open(cfg.DBDSN)
 	if err != nil {
 		slog.Error("初始化数据库失败", "error", err)
 		os.Exit(1)
@@ -79,7 +79,7 @@ func main() {
 			"version", version,
 			"addr", cfg.Addr,
 			"dataDir", dataDir,
-			"db", cfg.DBPath,
+			"db", cfg.DBUser+"@"+cfg.DBHost+"/"+cfg.DBName,
 			"allowedGroups", len(cfg.AllowedGroups),
 			"devLogin", cfg.DevLogin,
 			"qqConfigured", cfg.QQConfigured(),
@@ -99,7 +99,7 @@ func main() {
 	}
 }
 
-// cleanupSessions 定期清理过期会话，避免 SQLite 表无限增长。
+// cleanupSessions 定期清理过期会话，避免 MySQL 表无限增长。
 func cleanupSessions(ctx context.Context, st *store.Store) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()

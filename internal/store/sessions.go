@@ -46,13 +46,13 @@ func (s *Store) PutSession(ctx context.Context, sess Session) error {
 	}
 	_, err := s.conn().ExecContext(ctx, `
 		INSERT INTO sessions (id, user_id, csrf, oauth_state, oauth_redirect, expires_at, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(id) DO UPDATE SET
-			user_id = excluded.user_id,
-			csrf = excluded.csrf,
-			oauth_state = excluded.oauth_state,
-			oauth_redirect = excluded.oauth_redirect,
-			expires_at = excluded.expires_at`,
+		VALUES (?, ?, ?, ?, ?, ?, ?) AS new
+		ON DUPLICATE KEY UPDATE
+			user_id = new.user_id,
+			csrf = new.csrf,
+			oauth_state = new.oauth_state,
+			oauth_redirect = new.oauth_redirect,
+			expires_at = new.expires_at`,
 		sess.ID, userID, sess.CSRF, sess.OAuthState, sess.OAuthRedirect, millis(sess.ExpiresAt), created)
 	if err != nil {
 		return fmt.Errorf("保存会话失败: %w", err)
