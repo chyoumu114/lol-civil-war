@@ -43,6 +43,7 @@ echo "== 准备远端目录 $DEPLOY_HOST:$DEPLOY_DIR =="
 echo "== 上传 compose 与运行配置 =="
 "${SCP[@]}" "$ROOT/deploy/compose.yml" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/compose.yml"
 "${SCP[@]}" "$PROD_ENV" "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_DIR/.env"
+"${SSH[@]}" "chmod 600 '$DEPLOY_DIR/.env'"
 
 echo "== 远端登录 ACR 并拉取镜像 =="
 if [ -n "${ACR_REGISTRY:-}" ] && [ -n "${ACR_USERNAME:-}" ] && [ -n "${ACR_PASSWORD:-}" ]; then
