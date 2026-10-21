@@ -17,7 +17,7 @@
 
 - 所有业务数据按 QQ 群隔离，同一 QQ 号在不同群是两套资料；
 - 页面适配 PC 与手机；
-- 群号必须在白名单中；URL 使用随机公开 key，不暴露群号。
+- 群号必须在白名单中（环境变量引导白名单 + 数据库白名单，后者可在线增删）；URL 使用随机公开 key，不暴露群号。
 
 ## 2. 技术栈与部署形态
 
@@ -74,6 +74,7 @@ web/                     Vue 3 源码
 | `match_player_ratings` | 赛后评分：`(match_id,rater,target)` 唯一，1–5 星 |
 | `rofl_uploads` | 录像解析结果：`sha256` 唯一，`parsed` JSON |
 | `sessions` | 服务端会话：会话 id、用户、CSRF、OAuth 临时状态 |
+| `allowed_groups` | 数据库白名单：群号主键、备注、添加时间 |
 
 所有表使用 InnoDB + `utf8mb4`；时间统一以 UTC 毫秒（BIGINT）存储，对外输出按 `Asia/Shanghai` 的 ISO8601（带偏移）。
 列表/对象字段使用 LONGTEXT 存 JSON；应用启动时执行幂等建表语句。

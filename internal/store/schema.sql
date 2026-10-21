@@ -219,3 +219,10 @@ CREATE TABLE IF NOT EXISTS sessions (
     PRIMARY KEY (id),
     KEY idx_sessions_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS allowed_groups (
+    qq_group_number VARCHAR(20) NOT NULL,
+    note            VARCHAR(255) DEFAULT NULL,
+    created_at      BIGINT NOT NULL,
+    PRIMARY KEY (qq_group_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

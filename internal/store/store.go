@@ -81,6 +81,22 @@ func Open(dsn string) (*Store, error) {
 	return &Store{db: db}, nil
 }
 
+// EnsureSchema 只确保表结构存在，不保留连接（供迁移工具使用）。
+func EnsureSchema(dsn string) error {
+	db, err := sql.Open("mysql", dsn)
+	if err != nil {
+		return fmt.Errorf("打开 MySQL 失败: %w", err)
+	}
+	defer db.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		return fmt.Errorf("连接 MySQL 失败: %w", err)
+	}
+	return initSchema(db)
+}
+
 // Close 关闭数据库。
 func (s *Store) Close() error {
 	if s.db == nil {

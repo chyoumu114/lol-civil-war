@@ -8,6 +8,7 @@
 
 - **QQ 登录**：QQ 互联 OAuth 2.0；本地开发可用开发登录。
 - **按群隔离**：所有数据按 QQ 群隔离，URL 使用随机 key，不暴露群号。
+- **白名单管理**：环境变量引导 + 数据库白名单，线上可用命令即时添加/移除群。
 - **群内资料**：昵称、QQ 号（首次填写后锁定）、最高段位、擅长位置。
 - **内战组织**：自定义标题、大区、BO1/BO3/BO5、是否 BP、报名截止/开赛时间、备注。
 - **报名与替补**：主选/补位位置 + 两套段位；截止前可自行修改，截止后由组织者代改。
@@ -140,6 +141,34 @@ Compose 额外使用：`MYSQL_DATABASE`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYS
 4. 设置 `LCW_BASE_URL=https://你的域名` 并重启容器。
 
 QQ 互联只返回 OpenID，不返回 QQ 号。本项目用 OpenID 识别账号，用户首次进入某个群时补全 5–12 位 QQ 号（群内展示用，首次填写后不可修改）。
+
+### 白名单群管理
+
+`LCW_ALLOWED_GROUPS` 是启动引导白名单（始终允许，适合只维护一个群）。日常新增群推荐写入数据库白名单，**立即生效、无需重启**：
+
+```bash
+# Docker 部署（在 deploy 目录执行）
+docker compose exec app /app/lol-civil-war group add 123456789
+docker compose exec app /app/lol-civil-war group list
+docker compose exec app /app/lol-civil-war group remove 123456789
+
+# 源码运行（需带上 LCW_DB_* 环境变量）
+go run ./cmd/lol-civil-war group add 123456789
+```
+
+`group add` 支持追加备注：`group add 123456789 "周五内战群"`。
+
+## 从旧版导入数据
+
+仓库自带 `tools/legacy-import`，可把旧版 `lol-youmu-tools`（Laravel）的 MySQL 数据导入新库，保留主键、转换时间并自动把旧群加入白名单：
+
+```bash
+# 先备份目标库；-truncate 会清空目标业务表
+go run ./tools/legacy-import \
+  -source 'root:旧库密码@tcp(127.0.0.1:33062)/lolyoumu?charset=utf8mb4' \
+  -target 'root:新库密码@tcp(127.0.0.1:3307)/lol_civil_war?charset=utf8mb4' \
+  -truncate
+```
 
 ## 部署拓扑
 

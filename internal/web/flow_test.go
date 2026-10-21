@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -401,5 +402,32 @@ func TestCivilWarFlow(t *testing.T) {
 	placeholder := bytes.Contains(body, []byte("前端尚未构建"))
 	if resp.StatusCode != http.StatusOK || (!built && !placeholder) {
 		t.Fatalf("SPA 回落异常: %d", resp.StatusCode)
+	}
+}
+
+// TestDatabaseWhitelist 验证通过数据库添加的白名单群无需重启即可访问。
+func TestDatabaseWhitelist(t *testing.T) {
+	ts, st := newTestServer(t)
+	ctx := context.Background()
+
+	const number = "987654321"
+	if err := st.AddAllowedGroup(ctx, number, "集成测试"); err != nil {
+		t.Fatalf("添加白名单失败: %v", err)
+	}
+
+	client := newAPIClient(t, ts.URL)
+	client.do("GET", "/api/meta", nil, http.StatusOK)
+	resolved := client.do("POST", "/api/groups/resolve", map[string]any{"groupNumber": number}, http.StatusOK)
+	if key, _ := resolved["key"].(string); key == "" {
+		t.Fatalf("数据库白名单群未返回 key: %v", resolved)
+	}
+
+	removed, err := st.RemoveAllowedGroup(ctx, number)
+	if err != nil || !removed {
+		t.Fatalf("移除白名单失败: removed=%v err=%v", removed, err)
+	}
+	status, body := client.raw("POST", "/api/groups/resolve", map[string]any{"groupNumber": number}, true)
+	if status != http.StatusForbidden {
+		t.Fatalf("移除白名单后应返回 403，实际 %d: %s", status, body)
 	}
 }

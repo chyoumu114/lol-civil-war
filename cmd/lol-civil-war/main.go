@@ -27,6 +27,14 @@ import (
 var version = "dev"
 
 func main() {
+	// 运维子命令：添加/移除/查看白名单群，不启动 HTTP 服务。
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "group", "groups":
+			os.Exit(runGroupCLI(os.Args[2:]))
+		}
+	}
+
 	showVersion := flag.Bool("version", false, "打印版本号后退出")
 	flag.Parse()
 	if *showVersion {

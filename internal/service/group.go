@@ -32,7 +32,11 @@ type RankInput struct {
 func (a *App) ResolveGroup(ctx context.Context, identifier string) (store.Group, error) {
 	group, err := a.St.GroupByPublicKey(ctx, identifier)
 	if err == nil {
-		if !a.groupAllowed(group.QQGroupNumber) {
+		allowed, allowErr := a.groupAllowed(ctx, group.QQGroupNumber)
+		if allowErr != nil {
+			return store.Group{}, allowErr
+		}
+		if !allowed {
 			return store.Group{}, a.groupNotAllowed(group.QQGroupNumber)
 		}
 		return group, nil
@@ -48,7 +52,11 @@ func (a *App) ResolveGroup(ctx context.Context, identifier string) (store.Group,
 
 // ResolveGroupByNumber 用群号换取群（白名单校验，不存在则创建）。
 func (a *App) ResolveGroupByNumber(ctx context.Context, number string) (store.Group, error) {
-	if !a.groupAllowed(number) {
+	allowed, err := a.groupAllowed(ctx, number)
+	if err != nil {
+		return store.Group{}, err
+	}
+	if !allowed {
 		return store.Group{}, a.groupNotAllowed(number)
 	}
 	group, err := a.St.EnsureGroup(ctx, number, randomKey(32))
@@ -58,13 +66,14 @@ func (a *App) ResolveGroupByNumber(ctx context.Context, number string) (store.Gr
 	return group, nil
 }
 
-func (a *App) groupAllowed(number string) bool {
+// groupAllowed 判断群号是否被允许：环境变量白名单（引导/兜底）或数据库白名单。
+func (a *App) groupAllowed(ctx context.Context, number string) (bool, error) {
 	for _, allowed := range a.Cfg.AllowedGroups {
 		if allowed == number {
-			return true
+			return true, nil
 		}
 	}
-	return false
+	return a.St.IsGroupAllowed(ctx, number)
 }
 
 func (a *App) groupNotAllowed(number string) *Error {

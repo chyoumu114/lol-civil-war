@@ -105,7 +105,44 @@ certbot --nginx -d lol.example.com
 
 QQ 互联只返回 OpenID，不返回 QQ 号；用户首次进群时补全 QQ 号（群内展示用）。
 
-## 5. 构建与发布镜像（ACR）
+## 5. 白名单群管理
+
+群白名单有两层：
+
+- `LCW_ALLOWED_GROUPS`：启动引导白名单，始终允许（适合只维护固定几个群）。
+- 数据库 `allowed_groups`：可在线增删，**立即生效、无需重启**。
+
+```bash
+cd /opt/lol-civil-war
+
+# 添加（可带备注）
+docker compose exec app /app/lol-civil-war group add 123456789 "周五内战群"
+
+# 查看数据库白名单与环境变量白名单
+docker compose exec app /app/lol-civil-war group list
+
+# 移除
+docker compose exec app /app/lol-civil-war group remove 123456789
+```
+
+> 与旧版不同：新群不需要改 `.env`、不需要重启。若某群还在 `LCW_ALLOWED_GROUPS` 中，`group remove` 后它仍会被环境变量放行。
+
+## 6. 从旧版导入数据
+
+`tools/legacy-import` 用于把 `lol-youmu-tools` 的 MySQL 数据迁移到新库（保留主键、DATETIME 转 UTC 毫秒、旧群自动加入白名单）。
+
+```bash
+go run ./tools/legacy-import \
+  -source 'root:旧库密码@tcp(127.0.0.1:33062)/lolyoumu?charset=utf8mb4' \
+  -target 'root:新库密码@tcp(127.0.0.1:3307)/lol_civil_war?charset=utf8mb4' \
+  -truncate
+```
+
+- `-truncate` 会清空目标库业务表，执行前务必确认/备份；
+- 旧库的 `sessions`、`cache`、`jobs` 不会导入；
+- 导入完成后启动应用即可看到旧的组织、报名、对局、录像与评分。
+
+## 7. 构建与发布镜像（ACR）
 
 本地发布脚本会构建应用镜像并推送到阿里云 ACR：
 
@@ -135,7 +172,7 @@ scripts/publish.sh v0.2.0
 scripts/deploy-remote.sh
 ```
 
-## 6. 备份与恢复
+## 8. 备份与恢复
 
 MySQL 数据在命名卷 `lol-civil-war-mysql-data`。
 
@@ -159,7 +196,7 @@ docker compose start app
 
 上传的 `.rofl` 不落盘，无需单独备份。
 
-## 7. 升级
+## 9. 升级
 
 ```bash
 cd /opt/lol-civil-war
@@ -170,7 +207,7 @@ docker compose up -d
 数据库结构使用幂等的 `CREATE TABLE IF NOT EXISTS`，小版本升级无需手工迁移；涉及表结构变更时会在发布说明中注明。
 MySQL 版本固定在 `.env` 的 `MYSQL_IMAGE`，升级数据库大版本前先备份。
 
-## 8. 故障排查
+## 10. 故障排查
 
 | 现象 | 排查 |
 | --- | --- |
@@ -184,7 +221,7 @@ MySQL 版本固定在 `.env` 的 `MYSQL_IMAGE`，升级数据库大版本前先�
 | 头像不显示 | DataDragon CDN 不可达；可本地下载图标后挂载到 `/data/champions` |
 | 群号被拒绝 | 把群号加入 `LCW_ALLOWED_GROUPS` 并重启 |
 
-## 9. 安全清单
+## 11. 安全清单
 
 - [ ] `LCW_DEV_LOGIN=false`
 - [ ] 使用 HTTPS，`LCW_COOKIE_SECURE=auto` 或 `true`
