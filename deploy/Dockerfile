@@ -2,6 +2,8 @@
 
 # ---------- 前端构建 ----------
 FROM node:22.23.4-alpine AS web
+# 固定构建版本，避免基础镜像漂移导致线上产物不一致
+RUN test "$(node -v)" = "v22.23.4"
 WORKDIR /src/web
 ARG NPM_REGISTRY=https://registry.npmjs.org
 COPY web/package.json web/package-lock.json ./
@@ -11,10 +13,11 @@ RUN npm run build
 
 # ---------- Go 构建 ----------
 FROM golang:1.27.3-alpine AS build
+RUN GOTOOLCHAIN=local go version | grep -q 'go1.27.3'
 WORKDIR /src
 ARG VERSION=dev
 ARG GOPROXY=https://proxy.golang.org,direct
-ENV CGO_ENABLED=0 GOPROXY=${GOPROXY}
+ENV GOTOOLCHAIN=local CGO_ENABLED=0 GOPROXY=${GOPROXY}
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
