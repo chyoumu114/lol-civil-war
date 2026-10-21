@@ -5,15 +5,19 @@ import (
 	"time"
 )
 
-// User 是全局账号（QQ OpenID）。
+// User 是全局账号：user_no 是系统生成的唯一标识，
+// 邮箱密码与 QQ OpenID 都是可选的登录方式。
 type User struct {
-	ID        int64
-	QQOpenID  string
-	Name      string
-	Avatar    *string
-	IsDev     bool
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID           int64
+	UserNo       string
+	Email        *string
+	PasswordHash *string
+	QQOpenID     *string
+	Name         string
+	Avatar       *string
+	IsDev        bool
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // Group 是 QQ 群，也是业务数据的隔离边界。
@@ -192,6 +196,13 @@ type Session struct {
 	CSRF          string
 	OAuthState    string
 	OAuthRedirect string
-	ExpiresAt     time.Time
-	CreatedAt     time.Time
+	// QQ 快捷登录尚未完成邮箱注册时的临时状态。
+	QQPendingOpenID string
+	QQPendingUserID *int64
+	QQPendingName   string
+	QQPendingAvatar string
+	// 已登录用户发起“绑定 QQ”时的目标账号。
+	QQBindUserID *int64
+	ExpiresAt    time.Time
+	CreatedAt    time.Time
 }

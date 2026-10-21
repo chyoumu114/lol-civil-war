@@ -23,6 +23,20 @@ func maskQQ(qq *string) *string {
 	return &v
 }
 
+// UserView 导出账号信息（含 user_no、邮箱、QQ 绑定状态）。
+func (a *App) UserView(u store.User) *UserView {
+	return &UserView{
+		ID:          u.ID,
+		UserNo:      u.UserNo,
+		Name:        u.Name,
+		Avatar:      u.Avatar,
+		Email:       u.Email,
+		IsDev:       u.IsDev,
+		QQBound:     u.QQOpenID != nil && *u.QQOpenID != "" && !strings.HasPrefix(*u.QQOpenID, "dev:"),
+		HasPassword: u.PasswordHash != nil && *u.PasswordHash != "",
+	}
+}
+
 func (a *App) userView(u *store.User) *UserView {
 	if u == nil {
 		return nil

@@ -7,7 +7,7 @@
 
 - Linux + Docker 24+、Docker Compose v2
 - 1 核 1G 起（应用常驻内存很小；MySQL 建议至少 512MB）
-- 一个可用的域名；QQ 登录要求回调地址可访问（HTTPS）
+- 一个可用的域名；使用 QQ 快捷登录时要求回调地址可访问（HTTPS）
 - 宿主 Nginx 或 Caddy 负责 80/443 与证书
 
 ## 2. 按顺序执行
@@ -96,14 +96,18 @@ certbot --nginx -d lol.example.com
 
 > `LCW_BASE_URL` 必须与浏览器地址一致（协议 + 域名），否则 QQ 回调和 Secure Cookie 会异常。
 
-## 4. QQ 互联配置
+## 4. QQ 互联配置（可选）
+
+不配置 QQ 互联时，登录页只提供邮箱注册/登录，功能完整。需要 QQ 快捷登录再执行下面的步骤。
 
 1. 在 <https://connect.qq.com/> 创建「网站应用」；
 2. 回调地址填 `https://lol.example.com/auth/qq/callback`；
 3. 把 AppID / AppKey 写入 `.env` 的 `LCW_QQ_APP_ID` / `LCW_QQ_APP_KEY`；
 4. `docker compose up -d` 重建容器生效。
 
-QQ 互联只返回 OpenID，不返回 QQ 号；用户首次进群时补全 QQ 号（群内展示用）。
+QQ 互联只返回 OpenID，不返回 QQ 号；用户首次进群时补全 QQ 号（群内展示用，可修改但群内唯一）。
+
+首次使用 QQ 快捷登录会先要求设置邮箱和密码（邮箱已存在则校验密码并绑定）；通过邮箱注册的用户可以在「个人资料 → 账号」里再绑定 QQ。
 
 ## 5. 白名单群管理
 

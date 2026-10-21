@@ -431,3 +431,223 @@ func TestDatabaseWhitelist(t *testing.T) {
 		t.Fatalf("移除白名单后应返回 403，实际 %d: %s", status, body)
 	}
 }
+
+// sessionCookie 取出测试客户端当前会话 id。
+func sessionCookie(t *testing.T, client *apiClient) string {
+	t.Helper()
+	parsed, err := url.Parse(client.base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, cookie := range client.http.Jar.Cookies(parsed) {
+		if cookie.Name == sessionCookieName {
+			return cookie.Value
+		}
+	}
+	t.Fatal("找不到会话 Cookie")
+	return ""
+}
+
+// setPendingQQ 直接给测试会话写入待补全的 QQ 身份（模拟 QQ 回调后的状态）。
+func setPendingQQ(t *testing.T, st *store.Store, client *apiClient, openid, name string, userID *int64) {
+	t.Helper()
+	client.do("GET", "/api/meta", nil, http.StatusOK)
+	id := sessionCookie(t, client)
+	sess, err := st.GetSession(context.Background(), id)
+	if err != nil {
+		t.Fatalf("读取会话失败: %v", err)
+	}
+	sess.QQPendingOpenID = openid
+	sess.QQPendingName = name
+	sess.QQPendingAvatar = ""
+	sess.QQPendingUserID = userID
+	if err := st.PutSession(context.Background(), sess); err != nil {
+		t.Fatalf("写入会话失败: %v", err)
+	}
+}
+
+func TestEmailAuth(t *testing.T) {
+	ts, st := newTestServer(t)
+	ctx := context.Background()
+
+	client := newAPIClient(t, ts.URL)
+	client.do("GET", "/api/meta", nil, http.StatusOK)
+
+	registered := client.do("POST", "/api/auth/register", map[string]any{
+		"email": "player@example.com", "password": "password123",
+	}, http.StatusOK)
+	user := registered["user"].(map[string]any)
+	if user["userNo"] == nil || user["userNo"] == "" {
+		t.Fatalf("注册后没有 userNo: %v", user)
+	}
+	if user["email"] != "player@example.com" || user["hasPassword"] != true || user["qqBound"] != false {
+		t.Fatalf("注册返回字段异常: %v", user)
+	}
+	userNo := user["userNo"].(string)
+
+	// 邮箱重复
+	status, _ := client.raw("POST", "/api/auth/register", map[string]any{
+		"email": "PLAYER@example.com", "password": "password123",
+	}, true)
+	if status != http.StatusConflict {
+		t.Fatalf("重复邮箱应 409，实际 %d", status)
+	}
+
+	// 密码错误
+	anon := newAPIClient(t, ts.URL)
+	anon.do("GET", "/api/meta", nil, http.StatusOK)
+	status, _ = anon.raw("POST", "/api/auth/login", map[string]any{
+		"email": "player@example.com", "password": "wrong-password",
+	}, true)
+	if status != http.StatusUnauthorized {
+		t.Fatalf("错误密码应 401，实际 %d", status)
+	}
+
+	// 正常登录
+	loggedIn := anon.do("POST", "/api/auth/login", map[string]any{
+		"email": "player@example.com", "password": "password123",
+	}, http.StatusOK)
+	if loggedIn["user"].(map[string]any)["userNo"] != userNo {
+		t.Fatalf("登录后 userNo 不一致: %v", loggedIn)
+	}
+
+	// 数据库里的身份仍是同一个 user_no
+	dbUser, err := st.UserByEmail(ctx, "player@example.com")
+	if err != nil || dbUser.UserNo != userNo {
+		t.Fatalf("数据库 user_no 异常: %+v err=%v", dbUser, err)
+	}
+}
+
+func TestQQCompleteFlow(t *testing.T) {
+	ts, st := newTestServer(t)
+	ctx := context.Background()
+
+	// 先注册一个邮箱账号（不绑定 QQ）
+	emailClient := newAPIClient(t, ts.URL)
+	emailClient.do("GET", "/api/meta", nil, http.StatusOK)
+	registered := emailClient.do("POST", "/api/auth/register", map[string]any{
+		"email": "bind@example.com", "password": "password123",
+	}, http.StatusOK)
+	emailUserID := int64(registered["user"].(map[string]any)["id"].(float64))
+
+	// 1) 新 QQ + 已存在邮箱 + 正确密码 → 绑定到已有账号
+	qqClient := newAPIClient(t, ts.URL)
+	setPendingQQ(t, st, qqClient, "qq-openid-1", "QQ玩家", nil)
+	completed := qqClient.do("POST", "/api/auth/qq/complete", map[string]any{
+		"email": "bind@example.com", "password": "password123",
+	}, http.StatusOK)
+	if int64(completed["user"].(map[string]any)["id"].(float64)) != emailUserID {
+		t.Fatalf("QQ 补全没有绑定到已有邮箱账号: %v", completed)
+	}
+	if completed["user"].(map[string]any)["qqBound"] != true {
+		t.Fatalf("QQ 绑定状态异常: %v", completed)
+	}
+	boundUser, err := st.UserByQQOpenID(ctx, "qq-openid-1")
+	if err != nil || boundUser.ID != emailUserID {
+		t.Fatalf("按 QQ OpenID 查询失败: %+v err=%v", boundUser, err)
+	}
+
+	// 2) 同一邮箱 + 另一个 QQ → 409
+	second := newAPIClient(t, ts.URL)
+	setPendingQQ(t, st, second, "qq-openid-2", "另一个QQ", nil)
+	status, _ := second.raw("POST", "/api/auth/qq/complete", map[string]any{
+		"email": "bind@example.com", "password": "password123",
+	}, true)
+	if status != http.StatusConflict {
+		t.Fatalf("邮箱已绑定其他 QQ 应 409，实际 %d", status)
+	}
+
+	// 3) 新 QQ + 新邮箱 → 创建账号
+	third := newAPIClient(t, ts.URL)
+	setPendingQQ(t, st, third, "qq-openid-3", "新QQ玩家", nil)
+	created := third.do("POST", "/api/auth/qq/complete", map[string]any{
+		"email": "newqq@example.com", "password": "password123",
+	}, http.StatusOK)
+	if created["user"].(map[string]any)["qqBound"] != true {
+		t.Fatalf("新 QQ 注册异常: %v", created)
+	}
+	newUser, err := st.UserByQQOpenID(ctx, "qq-openid-3")
+	if err != nil || newUser.Email == nil || *newUser.Email != "newqq@example.com" {
+		t.Fatalf("新 QQ 账号数据异常: %+v err=%v", newUser, err)
+	}
+	if newUser.UserNo == "" {
+		t.Fatal("新 QQ 账号缺少 user_no")
+	}
+
+	// 4) 旧数据账号（有 openid、无邮箱密码）→ 邮箱密码补到同一个账号
+	legacyOpenID := "legacy-openid"
+	legacy, err := st.CreateUser(ctx, "U00000001", nil, nil, &legacyOpenID, "旧账号", nil, false)
+	if err != nil {
+		t.Fatalf("创建旧账号失败: %v", err)
+	}
+	legacyID := legacy.ID
+	fourth := newAPIClient(t, ts.URL)
+	setPendingQQ(t, st, fourth, legacyOpenID, "旧账号", &legacyID)
+	fourth.do("POST", "/api/auth/qq/complete", map[string]any{
+		"email": "legacy@example.com", "password": "password123",
+	}, http.StatusOK)
+	legacyAfter, err := st.UserByID(ctx, legacyID)
+	if err != nil || legacyAfter.Email == nil || *legacyAfter.Email != "legacy@example.com" {
+		t.Fatalf("旧账号补全邮箱失败: %+v err=%v", legacyAfter, err)
+	}
+	if legacyAfter.UserNo != "U00000001" {
+		t.Fatalf("旧账号 user_no 被改变: %s", legacyAfter.UserNo)
+	}
+}
+
+func TestQQNumberEditableUnique(t *testing.T) {
+	ts, st := newTestServer(t)
+	ctx := context.Background()
+
+	first := newAPIClient(t, ts.URL)
+	first.devLogin("40001", "甲")
+	key := first.resolveGroup()
+	first.saveProfile(key, "甲", "40001", "TOP")
+
+	// 页面回传的是脱敏 QQ（40***），原样保存应保留原值
+	groupData := first.do("GET", "/api/groups/"+key, nil, http.StatusOK)
+	groupID := int64(groupData["group"].(map[string]any)["id"].(float64))
+	memberID := int64(groupData["member"].(map[string]any)["id"].(float64))
+	first.do("PUT", "/api/groups/"+key+"/profile", map[string]any{
+		"nickname":  "甲",
+		"qqNumber":  "40***",
+		"rank":      map[string]any{"region": "艾欧尼亚", "tier": "GOLD", "division": 4, "lp": 0},
+		"positions": []string{"TOP"},
+	}, http.StatusOK)
+	member, err := st.MemberByID(ctx, groupID, memberID)
+	if err != nil || member.QQNumber == nil || *member.QQNumber != "40001" {
+		t.Fatalf("脱敏 QQ 保存后原值被改动: %+v err=%v", member, err)
+	}
+
+	second := newAPIClient(t, ts.URL)
+	second.devLogin("40002", "乙")
+	second.resolveGroup()
+	second.saveProfile(key, "乙", "40002", "JUNGLE")
+
+	profilePayload := func(qq string) map[string]any {
+		return map[string]any{
+			"nickname":  "乙",
+			"qqNumber":  qq,
+			"rank":      map[string]any{"region": "艾欧尼亚", "tier": "GOLD", "division": 4, "lp": 0},
+			"positions": []string{"JUNGLE"},
+		}
+	}
+
+	// 改成别人的 QQ 号 → 422
+	status, _ := second.raw("PUT", "/api/groups/"+key+"/profile", profilePayload("40001"), true)
+	if status != http.StatusUnprocessableEntity {
+		t.Fatalf("重复 QQ 应 422，实际 %d", status)
+	}
+	// 改成自己的新 QQ → 允许
+	second.do("PUT", "/api/groups/"+key+"/profile", profilePayload("40009"), http.StatusOK)
+	// 第一个用户再改成 40009 → 422
+	status, _ = first.raw("PUT", "/api/groups/"+key+"/profile", map[string]any{
+		"nickname":  "甲",
+		"qqNumber":  "40009",
+		"rank":      map[string]any{"region": "艾欧尼亚", "tier": "GOLD", "division": 4, "lp": 0},
+		"positions": []string{"TOP"},
+	}, true)
+	if status != http.StatusUnprocessableEntity {
+		t.Fatalf("跨成员重复 QQ 应 422，实际 %d", status)
+	}
+}

@@ -203,24 +203,32 @@ func copyTable(ctx context.Context, tx *sql.Tx, src *sql.DB, spec tableSpec, loc
 	for _, col := range sourceCols {
 		sourceSet[col] = true
 	}
-	cols := make([]string, 0, len(targetCols))
+	insertCols := make([]string, 0, len(targetCols))
+	selectCols := make([]string, 0, len(targetCols))
 	for _, col := range targetCols {
 		if sourceSet[col] {
-			cols = append(cols, col)
+			insertCols = append(insertCols, col)
+			selectCols = append(selectCols, col)
 		}
 	}
-	if len(cols) == 0 {
+	// 新版 users 要求 user_no 非空，旧库没有该列时由导入器生成。
+	generatedUserNo := false
+	if spec.target == "users" && !contains(insertCols, "user_no") {
+		insertCols = append(insertCols, "user_no")
+		generatedUserNo = true
+	}
+	if len(insertCols) == 0 {
 		return 0, fmt.Errorf("没有可导入的公共列")
 	}
 
-	quoted := make([]string, len(cols))
-	placeholders := make([]string, len(cols))
-	for i, col := range cols {
+	quoted := make([]string, len(insertCols))
+	placeholders := make([]string, len(insertCols))
+	for i, col := range insertCols {
 		quoted[i] = "`" + col + "`"
 		placeholders[i] = "?"
 	}
-	selectSQL := fmt.Sprintf("SELECT %s FROM `%s`", strings.Join(quoted, ", "), spec.source)
-	if contains(cols, "id") {
+	selectSQL := fmt.Sprintf("SELECT %s FROM `%s`", strings.Join(quoteAll(selectCols), ", "), spec.source)
+	if sourceSet["id"] {
 		selectSQL += " ORDER BY `id`"
 	}
 	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)",
@@ -237,22 +245,31 @@ func copyTable(ctx context.Context, tx *sql.Tx, src *sql.DB, spec tableSpec, loc
 
 	count := 0
 	for rows.Next() {
-		raw := make([]sql.NullString, len(cols))
-		scanArgs := make([]any, len(cols))
+		raw := make([]sql.NullString, len(selectCols))
+		scanArgs := make([]any, len(selectCols))
 		for i := range raw {
 			scanArgs[i] = &raw[i]
 		}
 		if err := rows.Scan(scanArgs...); err != nil {
 			return count, err
 		}
+		valuesByCol := make(map[string]sql.NullString, len(selectCols))
+		for i, col := range selectCols {
+			valuesByCol[col] = raw[i]
+		}
 
-		values := make([]any, len(cols))
-		for i, col := range cols {
-			if !raw[i].Valid {
+		values := make([]any, len(insertCols))
+		for i, col := range insertCols {
+			if col == "user_no" && generatedUserNo {
+				values[i] = randomUserNo()
+				continue
+			}
+			rawValue, ok := valuesByCol[col]
+			if !ok || !rawValue.Valid {
 				values[i] = nil
 				continue
 			}
-			value := raw[i].String
+			value := rawValue.String
 			switch {
 			case datetimeColumns[col]:
 				if ms, ok := parseLegacyTime(value, loc); ok {
@@ -272,6 +289,26 @@ func copyTable(ctx context.Context, tx *sql.Tx, src *sql.DB, spec tableSpec, loc
 		count++
 	}
 	return count, rows.Err()
+}
+
+func quoteAll(cols []string) []string {
+	out := make([]string, len(cols))
+	for i, col := range cols {
+		out[i] = "`" + col + "`"
+	}
+	return out
+}
+
+func randomUserNo() string {
+	const digits = "0123456789"
+	buf := make([]byte, 8)
+	if _, err := rand.Read(buf); err != nil {
+		return "U00000000"
+	}
+	for i := range buf {
+		buf[i] = digits[int(buf[i])%len(digits)]
+	}
+	return "U" + string(buf)
 }
 
 func importAllowedGroups(ctx context.Context, tx *sql.Tx, src *sql.DB) (int, error) {

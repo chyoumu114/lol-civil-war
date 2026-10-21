@@ -17,7 +17,7 @@
       <div class="home-tips">
         <span><icon-check-circle /> 数据按 QQ 群隔离</span>
         <span><icon-check-circle /> 支持 PC 与手机</span>
-        <span><icon-check-circle /> QQ 一键登录</span>
+        <span><icon-check-circle /> 邮箱 / QQ 登录</span>
       </div>
 
       <div class="home-foot">与 Riot Games 无关联 · League of Legends 是 Riot Games, Inc. 的商标</div>

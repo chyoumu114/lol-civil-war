@@ -78,6 +78,10 @@ func Open(dsn string) (*Store, error) {
 		_ = db.Close()
 		return nil, err
 	}
+	if err := upgradeSchema(context.Background(), db); err != nil {
+		_ = db.Close()
+		return nil, err
+	}
 	return &Store{db: db}, nil
 }
 
@@ -94,7 +98,10 @@ func EnsureSchema(dsn string) error {
 	if err := db.PingContext(ctx); err != nil {
 		return fmt.Errorf("连接 MySQL 失败: %w", err)
 	}
-	return initSchema(db)
+	if err := initSchema(db); err != nil {
+		return err
+	}
+	return upgradeSchema(context.Background(), db)
 }
 
 // Close 关闭数据库。

@@ -21,8 +21,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	if userID, ok := userIDFrom(r); ok {
 		user, err := s.App.St.UserByID(r.Context(), userID)
 		if err == nil {
-			payload.Authenticated = true
-			payload.User = &service.UserView{ID: user.ID, Name: user.Name, Avatar: user.Avatar, IsDev: user.IsDev}
+			payload = s.meView(user)
 		} else if err != nil && !isStoreNotFound(err) {
 			writeError(w, err)
 			return

@@ -3,14 +3,19 @@
 -- 应用启动时按分号切分执行，所有语句都必须幂等（IF NOT EXISTS）。
 
 CREATE TABLE IF NOT EXISTS users (
-    id          BIGINT NOT NULL AUTO_INCREMENT,
-    qq_openid   VARCHAR(128) NOT NULL,
-    name        VARCHAR(64) NOT NULL,
-    avatar      VARCHAR(255) DEFAULT NULL,
-    is_dev      TINYINT(1) NOT NULL DEFAULT 0,
-    created_at  BIGINT NOT NULL,
-    updated_at  BIGINT NOT NULL,
+    id            BIGINT NOT NULL AUTO_INCREMENT,
+    user_no       VARCHAR(16) NOT NULL,
+    email         VARCHAR(255) DEFAULT NULL,
+    password_hash VARCHAR(255) DEFAULT NULL,
+    qq_openid     VARCHAR(128) DEFAULT NULL,
+    name          VARCHAR(64) NOT NULL,
+    avatar        VARCHAR(255) DEFAULT NULL,
+    is_dev        TINYINT(1) NOT NULL DEFAULT 0,
+    created_at    BIGINT NOT NULL,
+    updated_at    BIGINT NOT NULL,
     PRIMARY KEY (id),
+    UNIQUE KEY uk_users_user_no (user_no),
+    UNIQUE KEY uk_users_email (email),
     UNIQUE KEY uk_users_openid (qq_openid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -41,6 +46,7 @@ CREATE TABLE IF NOT EXISTS group_members (
     updated_at    BIGINT NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_group_members (group_id, user_id),
+    UNIQUE KEY uk_group_members_qq (group_id, qq_number),
     KEY idx_group_members_group (group_id),
     CONSTRAINT fk_group_members_group FOREIGN KEY (group_id) REFERENCES qq_groups (id) ON DELETE CASCADE,
     CONSTRAINT fk_group_members_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
@@ -209,13 +215,18 @@ CREATE TABLE IF NOT EXISTS rofl_uploads (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS sessions (
-    id             VARCHAR(64) NOT NULL,
-    user_id        BIGINT DEFAULT NULL,
-    csrf           VARCHAR(64) NOT NULL,
-    oauth_state    VARCHAR(64) NOT NULL DEFAULT '',
-    oauth_redirect VARCHAR(255) NOT NULL DEFAULT '',
-    expires_at     BIGINT NOT NULL,
-    created_at     BIGINT NOT NULL,
+    id                 VARCHAR(64) NOT NULL,
+    user_id            BIGINT DEFAULT NULL,
+    csrf               VARCHAR(64) NOT NULL,
+    oauth_state        VARCHAR(64) NOT NULL DEFAULT '',
+    oauth_redirect     VARCHAR(255) NOT NULL DEFAULT '',
+    qq_pending_openid  VARCHAR(128) NOT NULL DEFAULT '',
+    qq_pending_user_id BIGINT DEFAULT NULL,
+    qq_pending_name    VARCHAR(64) NOT NULL DEFAULT '',
+    qq_pending_avatar  VARCHAR(255) NOT NULL DEFAULT '',
+    qq_bind_user_id    BIGINT DEFAULT NULL,
+    expires_at         BIGINT NOT NULL,
+    created_at         BIGINT NOT NULL,
     PRIMARY KEY (id),
     KEY idx_sessions_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

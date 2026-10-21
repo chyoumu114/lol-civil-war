@@ -6,10 +6,11 @@
 
 ## 功能
 
-- **QQ 登录**：QQ 互联 OAuth 2.0；本地开发可用开发登录。
+- **邮箱账号**：邮箱 + 密码注册/登录，不依赖 QQ；每个账号由系统生成唯一 `user_no`。
+- **QQ 快捷登录（可选）**：配置 QQ 互联后才出现；首次使用需补全邮箱密码，邮箱已存在则校验密码并绑定；邮箱注册的用户可在个人资料里再绑定 QQ。
 - **按群隔离**：所有数据按 QQ 群隔离，URL 使用随机 key，不暴露群号。
 - **白名单管理**：环境变量引导 + 数据库白名单，线上可用命令即时添加/移除群。
-- **群内资料**：昵称、QQ 号（首次填写后锁定）、最高段位、擅长位置。
+- **群内资料**：昵称、QQ 号（可修改，群内唯一）、最高段位、擅长位置。
 - **内战组织**：自定义标题、大区、BO1/BO3/BO5、是否 BP、报名截止/开赛时间、备注。
 - **报名与替补**：主选/补位位置 + 两套段位；截止前可自行修改，截止后由组织者代改。
 - **自动战力平衡**：按段位、大区系数、位置影响力计算战力，回溯搜索输出 5 套最平衡阵容。
@@ -42,7 +43,7 @@ cp .env.example .env
 #    LCW_BASE_URL=https://你的域名
 #    MYSQL_PASSWORD=随机强口令
 #    MYSQL_ROOT_PASSWORD=随机强口令
-#    （QQ 登录还需 LCW_QQ_APP_ID / LCW_QQ_APP_KEY）
+#    （可选 QQ 快捷登录：LCW_QQ_APP_ID / LCW_QQ_APP_KEY）
 
 # 4. 启动（首次会构建应用镜像、启动 MySQL 并自动建表）
 docker compose up -d --build
@@ -52,7 +53,7 @@ docker compose ps
 curl -fsS http://127.0.0.1:18020/api/health
 ```
 
-浏览器访问 `http://localhost:18020/`。数据在 `lol-civil-war-mysql-data` 卷里。
+浏览器访问 `http://localhost:18020/`，首次使用点「注册」用邮箱创建账号即可。数据在 `lol-civil-war-mysql-data` 卷里。
 
 > Compose 自带 `build`：从源码部署时用 `docker compose up -d --build` 即可。
 > 生产也可以改为你发布到镜像仓库的具体镜像，此时用 `docker compose up -d` 直接拉取：
@@ -118,8 +119,8 @@ http://localhost:8080/auth/dev?qq=10001&nickname=测试玩家&redirect=/
 | `LCW_TIMEZONE` | `Asia/Shanghai` | 展示时区 |
 | `LCW_ALLOWED_GROUPS` | 空 | 群号白名单，逗号分隔；**为空时拒绝所有群** |
 | `LCW_DEV_LOGIN` | `false` | 是否开放 `/auth/dev` |
-| `LCW_QQ_APP_ID` | 空 | QQ 互联 AppID |
-| `LCW_QQ_APP_KEY` | 空 | QQ 互联 AppKey |
+| `LCW_QQ_APP_ID` | 空 | 可选：QQ 互联 AppID，配置后才启用快捷登录 |
+| `LCW_QQ_APP_KEY` | 空 | 可选：QQ 互联 AppKey |
 | `LCW_QQ_REDIRECT_URI` | `${BASE_URL}/auth/qq/callback` | QQ 回调地址 |
 | `LCW_SESSION_TTL_HOURS` | `720` | 登录会话有效期 |
 | `LCW_ROFL_MAX_KB` | `131072` | 录像上传上限（128MB） |
@@ -133,14 +134,27 @@ http://localhost:8080/auth/dev?qq=10001&nickname=测试玩家&redirect=/
 
 Compose 额外使用：`MYSQL_DATABASE`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD`、`MYSQL_IMAGE`、`LCW_IMAGE`、`LCW_BIND`。
 
-### QQ 互联
+### 账号与 QQ 快捷登录
+
+不配置 QQ 互联时，登录页只提供邮箱注册/登录，功能完整可用。
+
+QQ 快捷登录是可选能力：
 
 1. 在 [QQ 互联开放平台](https://connect.qq.com/) 创建网站应用；
 2. 回调地址填 `https://你的域名/auth/qq/callback`；
 3. 把 AppID / AppKey 写入 `LCW_QQ_APP_ID` / `LCW_QQ_APP_KEY`；
 4. 设置 `LCW_BASE_URL=https://你的域名` 并重启容器。
 
-QQ 互联只返回 OpenID，不返回 QQ 号。本项目用 OpenID 识别账号，用户首次进入某个群时补全 5–12 位 QQ 号（群内展示用，首次填写后不可修改）。
+规则：
+
+- 每个账号有系统生成的唯一 `user_no`，QQ OpenID 只是可选的绑定方式；
+- **首次**使用 QQ 快捷登录：会先跳到“完成注册”页，要求填写邮箱和密码；
+  - 邮箱不存在 → 创建新账号并绑定 QQ；
+  - 邮箱已存在 → 校验密码，未绑定 QQ 则绑定，已绑定其他 QQ 会拒绝；
+- 通过邮箱注册的用户，可在「个人资料 → 账号 → 绑定 QQ」后再使用快捷登录；
+- 旧版数据里的 QQ 账号首次登录时会要求补全邮箱密码，补全后仍使用原账号与群内数据。
+
+QQ 互联只返回 OpenID，不返回 QQ 号。群内的 5–12 位 QQ 号由用户自己填写，可修改，但同一群内不能重复。
 
 ### 白名单群管理
 
@@ -215,6 +229,7 @@ scripts/                 发布 / 远程部署 / 端到端验收 / 图标下载
 - 业务数据在 MySQL；备份与恢复见部署文档。
 - 上传的 `.rofl` **不落盘**，只保存 sha256 与解析结果。
 - 接口对 QQ 号做脱敏（保留前段，隐藏最后三位）；群号不出现在 URL 中。
+- 密码使用 bcrypt 哈希存储；账号唯一标识是系统生成的 `user_no`，不依赖 QQ OpenID。
 - 仓库不包含任何真实群号、服务器、域名或凭据；部署时通过环境变量注入。
 
 ## 已知限制

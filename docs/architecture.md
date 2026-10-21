@@ -6,7 +6,7 @@
 
 为 QQ 群组织《英雄联盟》5v5 内战提供闭环：
 
-1. 群成员用 QQ 登录，维护群内资料；
+1. 群成员用邮箱或 QQ 登录，维护群内资料；
 2. 组织者发起内战（标题、大区、赛制、BP、报名截止、开赛时间）；
 3. 群成员报名或替补，截止前可自行修改；
 4. 组织者手动编排，或用自动战力平衡从报名者中选出 10 人，生成多套 5v5 阵容；
@@ -61,9 +61,9 @@ web/                     Vue 3 源码
 
 | 表 | 说明 |
 | --- | --- |
-| `users` | 全局账号：`qq_openid` 唯一，`name`、`avatar`、`is_dev` |
+| `users` | 全局账号：`user_no` 唯一（系统生成）；`email`/`password_hash` 与 `qq_openid` 均可空且各自唯一 |
 | `qq_groups` | QQ 群：`qq_group_number` 唯一，`public_key` 唯一（表名避开 MySQL 保留字 `groups`） |
-| `group_members` | 群内资料：`(group_id,user_id)` 唯一；QQ 号、昵称、段位、位置 |
+| `group_members` | 群内资料：`(group_id,user_id)` 唯一；`(group_id,qq_number)` 唯一；QQ 号、昵称、段位、位置 |
 | `events` | 内战组织：大区、赛制、BP、报名截止、开赛时间、`ended_at` |
 | `registrations` | 报名/替补：`(event_id,member_id)` 唯一；主选/补位位置与两套段位 |
 | `event_rosters` | 套用阵容：`event_id` 唯一，`payload` JSON（1队/2队各 5 人） |
@@ -73,19 +73,49 @@ web/                     Vue 3 源码
 | `match_bans` | BP 禁用：`(match_id,side,slot)` 唯一 |
 | `match_player_ratings` | 赛后评分：`(match_id,rater,target)` 唯一，1–5 星 |
 | `rofl_uploads` | 录像解析结果：`sha256` 唯一，`parsed` JSON |
-| `sessions` | 服务端会话：会话 id、用户、CSRF、OAuth 临时状态 |
+| `sessions` | 服务端会话：会话 id、用户、CSRF、OAuth 状态、QQ 待注册/绑定状态 |
 | `allowed_groups` | 数据库白名单：群号主键、备注、添加时间 |
 
 所有表使用 InnoDB + `utf8mb4`；时间统一以 UTC 毫秒（BIGINT）存储，对外输出按 `Asia/Shanghai` 的 ISO8601（带偏移）。
 列表/对象字段使用 LONGTEXT 存 JSON；应用启动时执行幂等建表语句。
 
-## 5. 登录与会话
+## 5. 账号、登录与会话
 
-- QQ 互联 OAuth 2.0：`/auth/qq` → 授权页 → `/auth/qq/callback` → 换 access_token → 换 OpenID → 拉用户信息。
+### 5.1 账号模型
+
+- 每个账号有系统生成的唯一 `user_no`（`U` + 8 位数字），它是账号身份；数据库自增 `id` 只用于内部外键。
+- 登录方式有两种，可同时挂在同一个账号上：
+  - **邮箱 + 密码**（bcrypt 哈希，始终可用）；
+  - **QQ 快捷登录**（可选，只有配置 `LCW_QQ_APP_ID/KEY` 时开放）。
+- `users.qq_openid`、`email` 都允许为空，但各自唯一；`password_hash` 可空（旧数据账号补全前）。
+
+### 5.2 邮箱注册 / 登录
+
+- `POST /api/auth/register`：邮箱不存在则创建账号并登录；已存在返回 409。
+- `POST /api/auth/login`：校验邮箱与 bcrypt 密码，失败统一返回 401。
+- 登录成功后重建会话（防会话固定），并下发 `lcw_session` 与 `XSRF-TOKEN` Cookie。
+
+### 5.3 QQ 快捷登录
+
+1. `/auth/qq` 保存 state 与回跳地址，跳到 QQ 授权页；
+2. 回调 `/auth/qq/callback` 换 OpenID：
+   - OpenID 已绑定且账号已设置邮箱密码 → 直接登录；
+   - OpenID 对应旧账号但没有邮箱密码 → 进入补全流程（绑定到原 `user_no`）；
+   - OpenID 未绑定 → 进入补全流程；
+3. 补全页 `/qq-complete`：
+   - 邮箱不存在 → 新建账号（生成 `user_no`）并绑定 OpenID；
+   - 邮箱已存在 → 校验密码；未绑定 QQ 则绑定，已绑定其他 QQ → 409；
+   - 补全成功后邮箱、密码、OpenID 都挂到同一个账号上。
+
+### 5.4 已登录用户绑定 QQ
+
+`/auth/qq/bind` 在会话里记录 `qq_bind_user_id`，回调时只允许当前登录账号绑定；QQ 已被其他账号占用时返回 409。绑定成功后后续即可直接用 QQ 登录。
+
+### 5.5 会话与 CSRF
+
 - 会话：随机 40 位 id 存在 `sessions` 表，Cookie `lcw_session`（HttpOnly、SameSite=Lax）。
 - CSRF：每个会话一个 token，写入非 HttpOnly 的 `XSRF-TOKEN` Cookie；前端 axios 自动放进 `X-XSRF-TOKEN` 头；写请求校验，失败返回 419。
-- 登录成功重建会话（防会话固定）。
-- QQ 互联不返回 QQ 号，因此 OpenID 是身份，群内首次补全 QQ 号用于展示。
+- QQ 待注册身份（openid/昵称/头像）保存在会话里，最多随会话过期失效。
 
 ## 6. 战力与自动匹配
 
@@ -156,3 +186,4 @@ web/                     Vue 3 源码
 4. **ROFL 不落盘**：只存 sha256 与解析结果，节省磁盘并天然去重。
 5. **自动匹配精确搜索**：报名规模通常 ≤ 30，回溯 + 预算足够；规模变大再考虑 beam search。
 6. **英雄资料库内嵌**：离线可用；头像作为版权素材不打包，默认走 DataDragon CDN。
+7. **身份从 OpenID 改为 user_no**：邮箱、QQ 都只是登录方式，账号生命周期不再绑定某个平台；旧数据在启动时自动回填 `user_no`。

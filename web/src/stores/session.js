@@ -19,6 +19,10 @@ export function loginUrl(redirect = window.location.pathname + window.location.s
   return `/auth/qq?redirect=${encodeURIComponent(redirect)}`
 }
 
+export function qqBindUrl(redirect = window.location.pathname + window.location.search) {
+  return `/auth/qq/bind?redirect=${encodeURIComponent(redirect)}`
+}
+
 export function devLoginUrl(qq, nickname, redirect = window.location.pathname + window.location.search) {
   const params = new URLSearchParams({ qq, redirect })
   if (nickname) params.set('nickname', nickname)

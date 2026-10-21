@@ -116,6 +116,19 @@ func (s *Store) MemberByGroupAndUser(ctx context.Context, groupID, userID int64)
 	return scanMember(row)
 }
 
+// MemberQQNumberTaken 检查群内 QQ 号是否已被其他成员使用。
+func (s *Store) MemberQQNumberTaken(ctx context.Context, groupID int64, qqNumber string, excludeMemberID int64) (bool, error) {
+	var count int
+	err := s.conn().QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM group_members
+		WHERE group_id = ? AND qq_number = ? AND id <> ?`,
+		groupID, qqNumber, excludeMemberID).Scan(&count)
+	if err != nil {
+		return false, fmt.Errorf("检查 QQ 号占用失败: %w", err)
+	}
+	return count > 0, nil
+}
+
 // MemberByID 按群 + 成员主键查询成员资料。
 func (s *Store) MemberByID(ctx context.Context, groupID, memberID int64) (Member, error) {
 	row := s.conn().QueryRowContext(ctx, `

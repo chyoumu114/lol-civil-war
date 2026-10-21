@@ -83,6 +83,11 @@ func (s *Server) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/qq", authLimit(s.handleQQRedirect))
 	mux.HandleFunc("GET /auth/qq/callback", authLimit(s.handleQQCallback))
 	mux.HandleFunc("GET /api/auth/callback", authLimit(s.handleQQCallback))
+	mux.HandleFunc("POST /api/auth/register", authLimit(s.handleEmailRegister))
+	mux.HandleFunc("POST /api/auth/login", authLimit(s.handleEmailLogin))
+	mux.HandleFunc("GET /api/auth/pending", authLimit(s.handleQQPending))
+	mux.HandleFunc("POST /api/auth/qq/complete", authLimit(s.handleQQComplete))
+	mux.HandleFunc("GET /auth/qq/bind", authLimit(s.handleQQBindRedirect))
 	mux.HandleFunc("GET /auth/dev", authLimit(s.handleDevLogin))
 	mux.HandleFunc("POST /auth/logout", s.handleLogout)
 

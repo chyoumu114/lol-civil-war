@@ -28,11 +28,44 @@
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
+| POST | `/api/auth/register` | 邮箱注册：`{"email","password"}`，成功即登录 |
+| POST | `/api/auth/login` | 邮箱登录：`{"email","password"}` |
 | GET | `/auth/qq?redirect=/` | 302 到 QQ 授权页；未配置凭据返回 503 |
-| GET | `/auth/qq/callback` | QQ 回调；成功后 302 回 `redirect` |
+| GET | `/auth/qq/callback` | QQ 回调；直接登录或 302 到 `/qq-complete` |
 | GET | `/api/auth/callback` | 同上（QQ 后台兼容地址） |
+| GET | `/auth/qq/bind?redirect=/` | 已登录用户发起绑定 QQ；未登录 401 |
+| GET | `/api/auth/pending` | 查询当前会话是否有待补全的 QQ 身份 |
+| POST | `/api/auth/qq/complete` | 首次 QQ 登录补全：`{"email","password"}` |
 | GET | `/auth/dev?qq=10001&nickname=测试&redirect=/` | 开发登录；`LCW_DEV_LOGIN=false` 时 404 |
 | POST | `/auth/logout` | 退出登录 |
+
+`/api/me` 的 `user` 字段：
+
+```json
+{
+  "id": 1,
+  "userNo": "U12345678",
+  "name": "玩家",
+  "avatar": null,
+  "email": "player@example.com",
+  "isDev": false,
+  "qqBound": false,
+  "hasPassword": true
+}
+```
+
+QQ 快捷登录只有配置 `LCW_QQ_APP_ID/KEY` 时可用；未配置时 `/auth/qq` 返回 503，前端不显示入口。
+
+首次 QQ 快捷登录的流程：
+
+1. 回调发现 OpenID 未绑定（或旧账号没有邮箱密码）；
+2. 302 到前端 `/qq-complete?redirect=...`；
+3. 页面调用 `/api/auth/pending` 展示 QQ 昵称；
+4. 提交 `/api/auth/qq/complete`：
+   - 邮箱不存在：创建账号（生成 `user_no`）并绑定；
+   - 邮箱已存在：校验密码；未绑定 QQ 则绑定，已绑定其他 QQ 返回 409。
+
+已登录邮箱用户可访问 `/auth/qq/bind` 绑定 QQ，之后才能直接用快捷登录。
 
 ## 群
 
@@ -52,6 +85,8 @@
   "positions": ["TOP", "JUNGLE"]
 }
 ```
+
+QQ 号可修改，但同一群内不能重复（422）。接口返回的 QQ 号是脱敏值（如 `123***`）；保存时原样回传脱敏值或留空表示不修改，填新的完整号码才会更新。
 
 ## 组织
 

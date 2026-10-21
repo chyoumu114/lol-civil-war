@@ -30,12 +30,16 @@ type MemberView struct {
 	JoinedAt        *string         `json:"joinedAt"`
 }
 
-// UserView 是全局账号信息。
+// UserView 是全局账号信息。userNo 是系统生成的唯一标识。
 type UserView struct {
-	ID     int64   `json:"id"`
-	Name   string  `json:"name"`
-	Avatar *string `json:"avatar"`
-	IsDev  bool    `json:"isDev"`
+	ID          int64   `json:"id"`
+	UserNo      string  `json:"userNo"`
+	Name        string  `json:"name"`
+	Avatar      *string `json:"avatar"`
+	Email       *string `json:"email"`
+	IsDev       bool    `json:"isDev"`
+	QQBound     bool    `json:"qqBound"`
+	HasPassword bool    `json:"hasPassword"`
 }
 
 // MeView 是 /api/me 响应。

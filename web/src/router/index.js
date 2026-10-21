@@ -24,6 +24,7 @@ const router = createRouter({
         { path: 'profile', name: 'profile', component: () => import('../views/ProfileView.vue') },
       ],
     },
+    { path: '/qq-complete', name: 'qq-complete', component: () => import('../views/QQCompleteView.vue') },
     { path: '/analysis-of-power', name: 'analysis-of-power', component: () => import('../views/PowerAnalysisView.vue') },
     { path: '/champions', name: 'champions', component: () => import('../views/ChampionsView.vue') },
     { path: '/:pathMatch(.*)*', redirect: '/' },
@@ -40,6 +41,7 @@ const PAGE_TITLES = {
   ranking: '排行榜',
   player: '个人分析',
   profile: '个人资料',
+  'qq-complete': '完成 QQ 注册',
   champions: '英雄资料库',
   'analysis-of-power': '战力计算器',
 }

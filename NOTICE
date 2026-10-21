@@ -37,8 +37,9 @@ Third-party notices / 第三方声明
 
 3. Go dependencies
    github.com/go-sql-driver/mysql is distributed under the Mozilla Public
-   License 2.0 (MPL-2.0); filippo.io/edwards25519 is distributed under
-   BSD-3-Clause. See go.sum and the module cache for details.
+   License 2.0 (MPL-2.0); filippo.io/edwards25519 and golang.org/x/crypto
+   are distributed under BSD-3-Clause. See go.sum and the module cache for
+   details.
 
 4. Frontend dependencies
    Vue, Arco Design Vue, axios, Vite and their transitive dependencies are

@@ -96,18 +96,23 @@ func (a *App) UpdateProfile(ctx context.Context, member store.Member, payload Pr
 		return store.Member{}, MemberView{}, ErrInvalid("昵称长度需在 1-16 个字符之间")
 	}
 
-	qqNumber := strings.TrimSpace(payload.QQNumber)
-	switch {
-	case member.QQNumber != nil && *member.QQNumber != "":
-		// 资料页展示的是脱敏 QQ（含 *），允许原样回传；手填其他完整 QQ 号视为修改。
-		if qqNumber != "" && qqNumber != *member.QQNumber && !strings.Contains(qqNumber, "*") {
-			return store.Member{}, MemberView{}, ErrInvalid("QQ 号首次填写后不可修改")
+	// 页面展示的是脱敏 QQ（含 *）；原样提交/留空表示不修改。
+	qqRaw := strings.TrimSpace(payload.QQNumber)
+	qqNumber := qqRaw
+	if qqRaw == "" || strings.Contains(qqRaw, "*") {
+		if member.QQNumber == nil || *member.QQNumber == "" {
+			return store.Member{}, MemberView{}, ErrInvalid("请填写 5-12 位数字的 QQ 号")
 		}
 		qqNumber = *member.QQNumber
-	default:
-		if !qqNumberRe.MatchString(qqNumber) {
-			return store.Member{}, MemberView{}, ErrInvalid("请填写 5-12 位数字的 QQ 号（首次填写后不可修改）")
-		}
+	} else if !qqNumberRe.MatchString(qqRaw) {
+		return store.Member{}, MemberView{}, ErrInvalid("请填写 5-12 位数字的 QQ 号")
+	}
+	taken, err := a.St.MemberQQNumberTaken(ctx, member.GroupID, qqNumber, member.ID)
+	if err != nil {
+		return store.Member{}, MemberView{}, err
+	}
+	if taken {
+		return store.Member{}, MemberView{}, ErrInvalid("该 QQ 号已被群内其他成员使用")
 	}
 
 	region := strings.TrimSpace(payload.Rank.Region)

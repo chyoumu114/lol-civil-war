@@ -40,6 +40,10 @@ http.interceptors.response.use(
 
 export const api = {
   logout: () => axios.post('/auth/logout', null, { withCredentials: true }),
+  registerEmail: (payload) => http.post('/auth/register', payload),
+  loginEmail: (payload) => http.post('/auth/login', payload),
+  qqPending: () => http.get('/auth/pending'),
+  completeQQ: (payload) => http.post('/auth/qq/complete', payload),
   health: () => http.get('/health'),
   meta: () => http.get('/meta'),
   calculatePower: (params) => http.get('/power/calculate', { params }),
