@@ -51,7 +51,8 @@ func (a *App) RegisterEmail(ctx context.Context, email, password string) (store.
 		return store.User{}, err
 	}
 	hashValue := string(hash)
-	name := defaultNameFromEmail(email)
+	// 邮箱注册不自动生成昵称：昵称与 QQ 号一样，由用户首次进群时必填。
+	name := ""
 
 	user, err := a.St.CreateUser(ctx, userNo, &email, &hashValue, nil, name, nil, false)
 	if err != nil {
@@ -265,18 +266,6 @@ func validatePassword(password string) error {
 		return ErrInvalid("密码最多 72 字节")
 	}
 	return nil
-}
-
-func defaultNameFromEmail(email string) string {
-	name := email
-	if index := strings.Index(email, "@"); index > 0 {
-		name = email[:index]
-	}
-	name = truncateRunes(name, 64)
-	if name == "" {
-		return "LOL 玩家"
-	}
-	return name
 }
 
 func optionalString(value string) *string {

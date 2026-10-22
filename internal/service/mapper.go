@@ -61,7 +61,8 @@ func (a *App) memberRank(m store.Member) *rank.Profile {
 }
 
 func isProfileComplete(m store.Member) bool {
-	return m.QQNumber != nil && *m.QQNumber != "" && m.RankTier != nil && *m.RankTier != "" && len(m.Positions) > 0
+	return m.Nickname != "" && m.QQNumber != nil && *m.QQNumber != "" &&
+		m.RankTier != nil && *m.RankTier != "" && len(m.Positions) > 0
 }
 
 func rankViewOf(profile rank.Profile) RankView {

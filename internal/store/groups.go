@@ -79,7 +79,8 @@ func scanGroup(row interface{ Scan(...any) error }) (Group, error) {
 func (s *Store) EnsureMember(ctx context.Context, groupID, userID int64, fallbackNickname string) (Member, error) {
 	member, err := s.MemberByGroupAndUser(ctx, groupID, userID)
 	if err == nil {
-		if member.Nickname == "" {
+		// 空昵称时，只有账号后来有了昵称（例如绑定 QQ）才补填；否则保持为空等用户填写。
+		if member.Nickname == "" && fallbackNickname != "" {
 			member.Nickname = fallbackNickname
 			if _, err := s.conn().ExecContext(ctx,
 				`UPDATE group_members SET nickname = ?, updated_at = ? WHERE id = ?`,
@@ -93,9 +94,6 @@ func (s *Store) EnsureMember(ctx context.Context, groupID, userID int64, fallbac
 		return Member{}, err
 	}
 
-	if fallbackNickname == "" {
-		fallbackNickname = "QQ 用户"
-	}
 	now := time.Now().UTC()
 	_, err = s.conn().ExecContext(ctx,
 		`INSERT IGNORE INTO group_members (group_id, user_id, nickname, positions, created_at, updated_at)

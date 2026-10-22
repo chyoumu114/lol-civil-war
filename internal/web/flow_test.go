@@ -483,7 +483,21 @@ func TestEmailAuth(t *testing.T) {
 	if user["email"] != "player@example.com" || user["hasPassword"] != true || user["qqBound"] != false {
 		t.Fatalf("注册返回字段异常: %v", user)
 	}
+	if user["name"] != "" {
+		t.Fatalf("邮箱注册昵称应为空，实际: %v", user["name"])
+	}
 	userNo := user["userNo"].(string)
+
+	// 邮箱注册后首次进群：昵称保持为空，资料不完整
+	key := client.resolveGroup()
+	groupData := client.do("GET", "/api/groups/"+key, nil, http.StatusOK)
+	member := groupData["member"].(map[string]any)
+	if member["nickname"] != "" {
+		t.Fatalf("邮箱注册用户进群后昵称应为空，实际: %v", member["nickname"])
+	}
+	if groupData["profileComplete"] != false {
+		t.Fatalf("空昵称不应算资料完整: %v", groupData)
+	}
 
 	// 邮箱重复
 	status, _ := client.raw("POST", "/api/auth/register", map[string]any{
@@ -515,6 +529,9 @@ func TestEmailAuth(t *testing.T) {
 	dbUser, err := st.UserByEmail(ctx, "player@example.com")
 	if err != nil || dbUser.UserNo != userNo {
 		t.Fatalf("数据库 user_no 异常: %+v err=%v", dbUser, err)
+	}
+	if dbUser.Name != "" {
+		t.Fatalf("数据库邮箱账号昵称应为空，实际: %q", dbUser.Name)
 	}
 }
 
@@ -572,6 +589,17 @@ func TestQQCompleteFlow(t *testing.T) {
 	}
 	if newUser.UserNo == "" {
 		t.Fatal("新 QQ 账号缺少 user_no")
+	}
+	if newUser.Name != "新QQ玩家" {
+		t.Fatalf("首次 QQ 注册应使用 QQ 昵称，实际: %q", newUser.Name)
+	}
+
+	// 首次 QQ 注册后进群，群昵称也应默认使用 QQ 昵称
+	qqKey := third.resolveGroup()
+	qqGroupData := third.do("GET", "/api/groups/"+qqKey, nil, http.StatusOK)
+	qqMember := qqGroupData["member"].(map[string]any)
+	if qqMember["nickname"] != "新QQ玩家" {
+		t.Fatalf("QQ 首次注册的群昵称异常: %v", qqMember["nickname"])
 	}
 
 	// 4) 旧数据账号（有 openid、无邮箱密码）→ 邮箱密码补到同一个账号

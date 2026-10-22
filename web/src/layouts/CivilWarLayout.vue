@@ -35,7 +35,7 @@
     <div v-if="ready && session.member && !session.profileComplete" class="profile-banner">
       <a-alert type="warning" :closable="false">
         <template #title>
-          个人资料尚未完善：报名和发起组织前需要填写 QQ 号、主选段位和擅长位置。
+          个人资料尚未完善：报名和发起组织前需要填写昵称、QQ 号、主选段位和擅长位置。
           <router-link :to="`${base}/profile`" class="banner-link">去完善</router-link>
         </template>
       </a-alert>

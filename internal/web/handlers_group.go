@@ -95,7 +95,7 @@ func (s *Server) handlePlayerAnalysis(w http.ResponseWriter, r *http.Request, gr
 }
 
 func isProfileCompleteMember(member store.Member) bool {
-	return member.QQNumber != nil && *member.QQNumber != "" &&
+	return member.Nickname != "" && member.QQNumber != nil && *member.QQNumber != "" &&
 		member.RankTier != nil && *member.RankTier != "" && len(member.Positions) > 0
 }
 

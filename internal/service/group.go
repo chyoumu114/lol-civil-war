@@ -82,11 +82,8 @@ func (a *App) groupNotAllowed(number string) *Error {
 
 // EnsureMember 取（或创建）当前登录用户在群内的资料。
 func (a *App) EnsureMember(ctx context.Context, group store.Group, user store.User) (store.Member, error) {
-	nickname := user.Name
-	if nickname == "" {
-		nickname = "QQ 用户"
-	}
-	return a.St.EnsureMember(ctx, group.ID, user.ID, nickname)
+	// 昵称允许暂为空；资料完整性会阻止报名/发起组织，用户在个人资料里补填。
+	return a.St.EnsureMember(ctx, group.ID, user.ID, user.Name)
 }
 
 // UpdateProfile 保存群内资料（QQ 号首次填写后锁定）。

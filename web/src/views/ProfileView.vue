@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <h1 class="page-title">个人资料</h1>
-    <p class="page-subtitle">资料仅在当前群生效；QQ 号可以修改，但群内不能重复。</p>
+    <p class="page-subtitle">资料仅在当前群生效；昵称和 QQ 号均为必填，QQ 号可修改但不能与群内成员重复。</p>
 
     <a-card title="账号" :bordered="false" class="account-card">
       <a-descriptions :column="1" size="medium">
@@ -106,6 +106,10 @@ function bindQQ() {
 }
 
 async function save() {
+  if (!form.nickname.trim()) {
+    Message.warning('请填写昵称')
+    return
+  }
   saving.value = true
   try {
     const data = await api.updateProfile(session.group.key, {
