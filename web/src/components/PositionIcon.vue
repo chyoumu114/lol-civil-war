@@ -9,7 +9,7 @@
       v-if="normalized"
       class="position-glyph"
       :style="{ width: size + 'px', height: size + 'px' }"
-      :viewBox="normalized === 'BOTTOM' ? '0 0 1135 1024' : '0 0 1024 1024'"
+      :viewBox="viewBox"
       role="img"
       :aria-label="label"
       focusable="false"
@@ -75,6 +75,16 @@ const props = defineProps({
 })
 
 const normalized = computed(() => (props.code || '').toUpperCase())
+const viewBoxes = {
+  TOP: '0 0 1024 1024',
+  JUNGLE: '0 0 1024 1024',
+  MIDDLE: '0 0 1024 1024',
+  // 提供的射手图形实际只占 752x752，原画布 1135x1024 导致偏左上且偏小。
+  BOTTOM: '63 69 790 790',
+  UTILITY: '0 0 1024 1024',
+  ALL: '128 128 768 768',
+}
+const viewBox = computed(() => viewBoxes[normalized.value] || '0 0 1024 1024')
 const label = computed(() => {
   if (!props.code) return ''
   if (normalized.value === 'ALL') return '补位'
@@ -98,7 +108,12 @@ const label = computed(() => {
 .position-glyph {
   display: block;
   flex: 0 0 auto;
+  overflow: visible;
   filter: drop-shadow(0 0 5px rgba(212, 175, 55, 0.16));
+}
+.position-icon.utility .position-glyph {
+  transform: scale(1.4);
+  transform-origin: center;
 }
 .position-label {
   font-size: 12px;
