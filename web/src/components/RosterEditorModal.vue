@@ -114,7 +114,7 @@
           <div v-for="(plan, index) in plans" :key="index" class="recommend-card">
             <div class="recommend-head">
               <span class="recommend-title">方案 {{ index + 1 }}</span>
-              <span class="muted small">差值 {{ plan.diff }}</span>
+              <span class="muted small">差值 {{ planDiff(plan) }}</span>
               <a-button size="mini" type="primary" @click="applyPlan(plan)">使用此方案</a-button>
             </div>
             <div class="recommend-teams">
@@ -279,6 +279,10 @@ function openRecommendPlayer(item) {
     isOrganizer: reg.isOrganizer,
   }
   playerInfoVisible.value = true
+}
+
+function planDiff(plan) {
+  return Math.abs(Number(plan.team1Power || 0) - Number(plan.team2Power || 0))
 }
 
 function applyPlan(plan) {
