@@ -1,6 +1,14 @@
-# LOL 内战工具（lol-civil-war）
+# LOL 群内战报名工具（lol-civil-war）
 
-面向 QQ 群的《英雄联盟》5v5 自定义内战组织工具：报名、自动战力平衡、对局记录、赛后评分与排行榜。
+[简体中文](README.md) | [English](README.en.md)
+
+<p align="center">
+  <img src="docs/images/events.png" width="32%" alt="组织与报名" />
+  <img src="docs/images/rank.png" width="32%" alt="排行榜" />
+  <img src="docs/images/info.png" width="32%" alt="对局详情" />
+</p>
+
+面向各类《英雄联盟》社群（QQ 群、微信群、Discord 等）的 5v5 自定义内战组织工具：报名、自动战力平衡、对局记录、赛后评分与排行榜。
 
 后端由 Go 1.27.3 重写，单二进制 + MySQL 8，内置前端静态资源；按顺序执行几条命令即可完成部署。
 
@@ -8,7 +16,7 @@
 
 - **邮箱账号**：邮箱 + 密码注册/登录，不依赖 QQ；每个账号由系统生成唯一 `user_no`。
 - **QQ 快捷登录（可选）**：配置 QQ 互联后才出现；首次使用需补全邮箱密码，邮箱已存在则校验密码并绑定；邮箱注册的用户可在个人资料里再绑定 QQ。
-- **按群隔离**：所有数据按 QQ 群隔离，URL 使用随机 key，不暴露群号。
+- **按群隔离**：所有数据按群隔离，URL 使用随机 key，不暴露群号。
 - **白名单管理**：环境变量引导 + 数据库白名单，线上可用命令即时添加/移除群。
 - **群内资料**：昵称、QQ 号（可修改，群内唯一）、最高段位、擅长位置。
 - **内战组织**：自定义标题、大区、BO1/BO3/BO5、是否 BP、报名截止/开赛时间、备注。
@@ -39,7 +47,7 @@ cd lol-civil-war/deploy
 cp .env.example .env
 
 # 3. 编辑 .env：至少填写
-#    LCW_ALLOWED_GROUPS=你的QQ群号
+#    LCW_ALLOWED_GROUPS=你的群号
 #    LCW_BASE_URL=https://你的域名
 #    MYSQL_PASSWORD=随机强口令
 #    MYSQL_ROOT_PASSWORD=随机强口令
