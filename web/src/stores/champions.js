@@ -77,14 +77,13 @@ export function championIconUrls(key, version) {
     || Object.values(champions.map).find((item) => String(item.key || '').toLowerCase() === lower)
   const fileKey = info?.key || rawKey
 
-  // 英雄头像全部保存在 frontend/public/champions/{key}.png，本地优先；
-  // 仅当本地资源缺失时才回退 CDN，避免国内网络下头像频繁加载失败。
-  const urls = [`/champions/${fileKey}.png`]
-  if (version) {
-    urls.push(`https://ddragon.leagueoflegends.com/cdn/${version}/img/champion/${fileKey}.png`)
+  // 顺序：DataDragon CDN → 服务器本地缓存 → 组件用英雄名首字兜底。
+  // 本地文件由 update-champions 命令下载到 LCW_CHAMPION_ICON_DIR。
+  const iconVersion = version || champions.latestVersion
+  const urls = []
+  if (iconVersion) {
+    urls.push(`https://ddragon.leagueoflegends.com/cdn/${iconVersion}/img/champion/${fileKey}.png`)
   }
-  urls.push(
-    `https://raw.communitydragon.org/latest/plugins/rcp-be-lol-game-data/global/default/assets/characters/${lower}/hud/${lower}_square.png`
-  )
+  urls.push(`/champions/${fileKey}.png`)
   return urls
 }

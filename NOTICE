@@ -24,11 +24,11 @@ Third-party notices / 第三方声明
    and game assets are trademarks or property of Riot Games, Inc.
    They are NOT covered by this project's GPL-3.0 license.
 
-   The repository does not bundle champion avatars. The frontend falls back
-   to Riot's public DataDragon CDN at runtime. If you download champion
-   images locally (scripts/fetch-champion-icons.py), those files remain
-   subject to Riot Games' terms and must not be redistributed as part of
-   this project.
+   The repository does not bundle champion avatars. The frontend loads them
+   from Riot's public DataDragon CDN, falling back to a server-local cache
+   under LCW_CHAMPION_ICON_DIR. If you download champion images locally
+   (scripts/update-champions.py), those files remain subject to Riot Games'
+   terms and must not be redistributed as part of this project.
 
 2. Tier badges and position icons
    The T0-T4 tier badge SVG in web/src/components/TierBadge.vue is original

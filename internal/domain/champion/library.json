@@ -1,8 +1,8 @@
 {
     "version": "16.20.1",
-    "updatedAt": "2026-10-17",
+    "updatedAt": "2026-10-24",
     "sources": [
-        "ddragon 16.20.1 zh_CN/en_US champion.json",
+        "ddragon 16.20.1 zh_CN champion.json",
         "merakianalytics champion positions",
         "resources/data/champion-aliases.json"
     ],

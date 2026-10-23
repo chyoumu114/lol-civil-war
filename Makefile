@@ -1,11 +1,12 @@
 # 常用开发命令。Windows 下可用 Git Bash / WSL 执行。
 SHELL := /bin/sh
 VERSION ?= dev
+CHAMPION_VERSION ?= 16.20.1
 BINARY := lol-civil-war
 GO ?= $(shell command -v go 2>/dev/null || echo /usr/local/go/bin/go)
 NPM ?= npm
 
-.PHONY: help web build dev run test vet fmt clean
+.PHONY: help web build dev run test vet fmt clean champions
 
 help:
 	@echo "make web     构建前端并同步到 internal/webui/dist"
@@ -15,6 +16,7 @@ help:
 	@echo "make test    运行全部 Go 测试"
 	@echo "make vet     静态检查"
 	@echo "make fmt     格式化 Go 代码"
+	@echo "make champions 更新英雄库+头像（CHAMPION_VERSION=$(CHAMPION_VERSION)）"
 
 web:
 	cd web && $(NPM) ci --no-audit --no-fund && $(NPM) run build
@@ -38,6 +40,9 @@ vet:
 
 fmt:
 	gofmt -w $$(find . -name '*.go' -not -path './web/*')
+
+champions:
+	python3 scripts/update-champions.py --version $(CHAMPION_VERSION)
 
 clean:
 	rm -rf bin internal/webui/dist/assets internal/webui/dist/index.html

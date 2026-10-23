@@ -14,6 +14,8 @@ export default defineConfig({
     proxy: {
       '/api': apiTarget,
       '/auth': apiTarget,
+      // 本地英雄头像由 Go 服务从 LCW_CHAMPION_ICON_DIR 提供；只代理子路径，避免影响 /champions 页面路由。
+      '/champions/': apiTarget,
     },
   },
   build: {

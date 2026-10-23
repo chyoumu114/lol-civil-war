@@ -126,7 +126,8 @@ http://localhost:8080/auth/dev?qq=10001&nickname=测试玩家&redirect=/
 | `LCW_ROFL_MAX_KB` | `131072` | 录像上传上限（128MB） |
 | `LCW_COOKIE_SECURE` | `auto` | `auto` 时按 `LCW_BASE_URL` 是否为 https 决定 |
 | `LCW_TRUST_PROXY` | `true` | 是否信任 `X-Forwarded-*` |
-| `LCW_CHAMPION_ICON_DIR` | `${DATA_DIR}/champions` | 可选本地英雄图标目录 |
+| `LCW_CHAMPION_ICON_DIR` | `${DATA_DIR}/champions` | 本地英雄头像目录 |
+| `LCW_DDRAGON_VERSION` | 空（自动探测） | DataDragon 英雄数据版本；部署模板默认固定 16.20.1 |
 | `LCW_DB_DSN` | 空 | 完整 MySQL DSN；设置后忽略下面的分项 |
 | `LCW_DB_HOST` / `LCW_DB_PORT` | `127.0.0.1` / `3306` | MySQL 地址 |
 | `LCW_DB_USER` / `LCW_DB_PASSWORD` | `root` / 空 | MySQL 账号 |
@@ -173,6 +174,54 @@ go run ./cmd/lol-civil-war group add 123456789
 ```
 
 `group add` 支持追加备注：`group add 123456789 "周五内战群"`。
+
+## 英雄头像与英雄库更新
+
+英雄头像和资料来自 **DataDragon CDN**：
+
+```text
+https://ddragon.leagueoflegends.com/cdn/
+```
+
+仓库不提交头像文件。头像加载顺序：
+
+```text
+DataDragon CDN → 服务器本地 /champions/{key}.png → 英雄名首字
+```
+
+线上本地目录默认是 `/data/champions`，由 `LCW_CHAMPION_ICON_DIR` 配置。
+
+更新英雄库和头像：
+
+```bash
+# 默认更新到 16.20.1
+make champions
+
+# 指定版本
+make champions CHAMPION_VERSION=16.20.1
+
+# 或直接运行脚本
+python3 scripts/update-champions.py --version 16.20.1
+```
+
+命令会：
+
+1. 拉取 DataDragon `champion.json`；
+2. 更新 `internal/domain/champion/library.json` 的版本、英雄名和称号；
+3. 追加新英雄（新英雄的 `positions`/`aliases` 为空，可按需手工补）；
+4. 下载头像到 `data/champions/`。
+
+更新完英雄列表后重新构建项目，并把部署 env 的 `LCW_DDRAGON_VERSION` 改成同一版本（或留空自动探测）：
+
+```bash
+make build
+```
+
+线上把头像放进容器数据卷：
+
+```bash
+docker cp data/champions/. lol-civil-war:/data/champions/
+```
 
 ## 从旧版导入数据
 
@@ -240,10 +289,12 @@ scripts/                 发布 / 远程部署 / 端到端验收 / 图标下载
 - ROFL 录像从游戏加载开始记录，**不包含 Ban/Pick**；BP 需手动记录。
 - 仅支持 14.11+ 的 ROFL2 录像；14.9–14.10 录像无元数据。
 - 报名规模很大时自动匹配可能触及搜索预算（默认 300 万节点），结果不保证全局最优。
-- 仓库不含英雄头像（Riot 版权素材）；默认使用 DataDragon CDN，离线环境可用 `scripts/fetch-champion-icons.py` 下载到本地目录。
+- 仓库不含英雄头像（Riot 版权素材）；默认使用 DataDragon CDN，失败时回退到本地 `/data/champions`，没有本地文件则显示英雄名首字。头像可用 `make champions` 下载。
 
 ## 许可与声明
 
 本项目使用 [GPL-3.0](LICENSE) 许可。
 
 本工具与 Riot Games 无关联；League of Legends、英雄名称与相关素材是 Riot Games, Inc. 的商标/财产，不属于 GPL 授权范围。详见 [NOTICE](NOTICE)。
+
+英雄头像数据来源：[DataDragon CDN](https://ddragon.leagueoflegends.com/cdn/)。头像文件不进入仓库，仅由部署方按需缓存到本地。

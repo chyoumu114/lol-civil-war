@@ -20,7 +20,8 @@ import (
 //
 // DataDragon 不可达时降级为内置英雄资料库，保证离线部署也能正常显示头像版本。
 type DDragon struct {
-	client *http.Client
+	client            *http.Client
+	configuredVersion string
 
 	mu       sync.Mutex
 	versions map[string]*ddragonCache
@@ -39,16 +40,29 @@ type ddragonData struct {
 
 // NewDDragon 构造客户端。
 func NewDDragon(cfg *config.Config) *DDragon {
+	configured := normalizeDDragonVersion(cfg.DDragonVersion)
+	if configured == "latest" {
+		configured = ""
+	}
 	return &DDragon{
-		client:   &http.Client{Timeout: 10 * time.Second},
-		versions: map[string]*ddragonCache{},
+		client:            &http.Client{Timeout: 10 * time.Second},
+		configuredVersion: configured,
+		versions:          map[string]*ddragonCache{},
 	}
 }
 
 // Names 返回英雄名列表；失败时回退本地资料库。
 func (d *DDragon) Names(ctx context.Context, requested string) ChampionNamesView {
+	requested = strings.TrimSpace(requested)
 	version := normalizeDDragonVersion(requested)
-	latest := d.latestRealVersion(ctx)
+	latest := d.configuredVersion
+	if latest == "" {
+		latest = d.latestRealVersion(ctx)
+	}
+	// 配置了固定 DataDragon 版本时，latest 也使用该版本，保证 CDN 与本地缓存一致。
+	if d.configuredVersion != "" && (requested == "" || requested == "latest") {
+		version = d.configuredVersion
+	}
 
 	candidates := make([]string, 0, 3)
 	seen := map[string]bool{}
