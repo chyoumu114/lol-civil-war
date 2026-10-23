@@ -302,7 +302,7 @@
 
                   <span class="reg-pos main-pos" data-label="主选位置">
                     <PositionIcon v-if="reg.mainPosition" :code="reg.mainPosition" :size="28" />
-                    <img v-else class="all-position-icon" src="/positions/all.png?v=2" alt="补位" title="补位" />
+                    <PositionIcon v-else code="ALL" :size="28" />
                   </span>
 
                   <span class="reg-rank sub-rank" data-label="补位段位"><RankTag :rank="reg.subRank" compact /></span>
@@ -1218,12 +1218,6 @@ onMounted(reload)
   align-items: center;
   gap: 4px;
   flex-wrap: wrap;
-}
-.all-position-icon {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  filter: brightness(1.7) contrast(1.15) drop-shadow(0 0 6px rgba(212, 175, 55, 0.2));
 }
 .reg-note {
   overflow: hidden;

@@ -31,12 +31,10 @@ Third-party notices / 第三方声明
    this project.
 
 2. Tier badges and position icons
-   The T0-T4 tier badge SVG in web/src/components/TierBadge.vue is original
-   artwork created for this project and is licensed under GPL-3.0-or-later.
-   It does not copy artwork from Tencent, Riot Games, or 101.qq.com.
-
-   Position icons under web/public/positions are used for UI illustration;
-   if they contain third-party artwork, they are excluded from the GPL grant.
+   The T0-T4 tier badge SVG in web/src/components/TierBadge.vue and the
+   position glyphs in web/src/components/PositionIcon.vue are original
+   artwork created for this project and are licensed under GPL-3.0-or-later.
+   They do not copy artwork from Tencent, Riot Games, or 101.qq.com.
 
 3. Go dependencies
    github.com/go-sql-driver/mysql is distributed under the Mozilla Public

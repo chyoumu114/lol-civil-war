@@ -35,7 +35,7 @@
               aria-label="补位"
               @click="selectMain('')"
             >
-              <img class="all-choice-icon" src="/positions/all.png?v=2" alt="补位" />
+              <PositionIcon code="ALL" :size="34" />
             </button>
             <button
               v-for="item in session.meta?.positions || []"
@@ -247,11 +247,5 @@ async function submit() {
   border-color: #ff4655;
   background: rgba(255, 70, 85, 0.18);
   box-shadow: 0 0 0 2px rgba(255, 70, 85, 0.22), 0 0 16px rgba(255, 70, 85, 0.35);
-}
-.all-choice-icon {
-  width: 34px;
-  height: 34px;
-  object-fit: contain;
-  filter: brightness(1.7) contrast(1.15) drop-shadow(0 0 6px rgba(212, 175, 55, 0.2));
 }
 </style>
