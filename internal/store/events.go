@@ -8,11 +8,11 @@ import (
 	"time"
 )
 
-// MatchStats 是组织维度的对局统计。
+// MatchStats 是组织维度的对局统计（按 1队/2队 统计，不能按蓝/红方统计）。
 type MatchStats struct {
-	Count    int
-	BlueWins int
-	RedWins  int
+	Count     int
+	Team1Wins int
+	Team2Wins int
 }
 
 const eventSelect = `
@@ -118,8 +118,15 @@ func (s *Store) EventListData(ctx context.Context, groupID int64, limit int) ([]
 	stats := map[int64]MatchStats{}
 	matchRows, err := s.conn().QueryContext(ctx, `
 		SELECT m.event_id, count(*),
-		       CAST(coalesce(sum(CASE WHEN m.blue_win = 1 THEN 1 ELSE 0 END), 0) AS SIGNED),
-		       CAST(coalesce(sum(CASE WHEN m.blue_win = 0 THEN 1 ELSE 0 END), 0) AS SIGNED)
+		       CAST(coalesce(sum(CASE
+		         WHEN (coalesce(m.team1_side, 'blue') = 'blue' AND m.blue_win = 1)
+		           OR (coalesce(m.team1_side, 'blue') = 'red' AND m.blue_win = 0)
+		         THEN 1 ELSE 0 END), 0) AS SIGNED),
+		       CAST(coalesce(sum(CASE
+		         WHEN m.blue_win IS NOT NULL AND (
+		           (coalesce(m.team1_side, 'blue') = 'blue' AND m.blue_win = 0)
+		           OR (coalesce(m.team1_side, 'blue') = 'red' AND m.blue_win = 1))
+		         THEN 1 ELSE 0 END), 0) AS SIGNED)
 		FROM matches m JOIN events e ON e.id = m.event_id
 		WHERE e.group_id = ? GROUP BY m.event_id`, groupID)
 	if err != nil {
@@ -131,7 +138,7 @@ func (s *Store) EventListData(ctx context.Context, groupID int64, limit int) ([]
 			eventID int64
 			stat    MatchStats
 		)
-		if err := matchRows.Scan(&eventID, &stat.Count, &stat.BlueWins, &stat.RedWins); err != nil {
+		if err := matchRows.Scan(&eventID, &stat.Count, &stat.Team1Wins, &stat.Team2Wins); err != nil {
 			return nil, nil, nil, err
 		}
 		stats[eventID] = stat

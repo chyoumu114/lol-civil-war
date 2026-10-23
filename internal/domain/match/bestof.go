@@ -16,20 +16,8 @@ func IsValid(bestOf int) bool {
 // WinsRequired 返回系列赛所需胜场：BO1=1、BO3=2、BO5=3。
 func WinsRequired(bestOf int) int { return bestOf/2 + 1 }
 
-// Winner 按蓝/红胜场判定系列赛胜方。
-func Winner(bestOf, blueWins, redWins int) (side string, ok bool) {
+// IsOver 报告系列赛是否已分出胜负（参数为 1队/2队 胜场，不是蓝/红方）。
+func IsOver(bestOf, team1Wins, team2Wins int) bool {
 	need := WinsRequired(bestOf)
-	if blueWins >= need {
-		return "blue", true
-	}
-	if redWins >= need {
-		return "red", true
-	}
-	return "", false
-}
-
-// IsOver 报告系列赛是否已分出胜负。
-func IsOver(bestOf, blueWins, redWins int) bool {
-	_, ok := Winner(bestOf, blueWins, redWins)
-	return ok
+	return team1Wins >= need || team2Wins >= need
 }

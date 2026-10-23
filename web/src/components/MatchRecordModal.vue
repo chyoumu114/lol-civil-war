@@ -381,7 +381,7 @@ const winnerText = computed(() => {
   if (win === null || win === undefined) return '未记录胜方'
   const side = win ? 'blue' : 'red'
   const team = (data.value?.match?.team1Side || 'blue') === side ? '1队' : '2队'
-  return `${team} · 胜 · ${side === 'blue' ? '蓝方' : '红方'}`
+  return `${team}（${side === 'blue' ? '蓝方' : '红方'}）· 胜`
 })
 
 function playerAt(side, position) {

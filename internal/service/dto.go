@@ -78,8 +78,8 @@ type EventListItem struct {
 	EventView
 	RegistrationCount int `json:"registrationCount"`
 	MatchCount        int `json:"matchCount"`
-	BlueWins          int `json:"blueWins"`
-	RedWins           int `json:"redWins"`
+	Team1Wins         int `json:"team1Wins"`
+	Team2Wins         int `json:"team2Wins"`
 }
 
 // RegistrationView 是报名列表项。
@@ -122,7 +122,6 @@ type SeriesMatchView struct {
 	Status      string  `json:"status"`
 	BlueWin     *bool   `json:"blueWin"`
 	Team1Side   string  `json:"team1Side"`
-	WinnerSide  *string `json:"winnerSide"`
 	WinnerTeam  *int    `json:"winnerTeam"`
 	DurationMS  *int64  `json:"durationMs"`
 	SubmittedAt *string `json:"submittedAt"`
@@ -132,13 +131,9 @@ type SeriesMatchView struct {
 type SeriesView struct {
 	BestOf       int               `json:"bestOf"`
 	WinsRequired int               `json:"winsRequired"`
-	BlueWins     int               `json:"blueWins"`
-	RedWins      int               `json:"redWins"`
-	Winner       *string           `json:"winner"`
 	Team1Wins    int               `json:"team1Wins"`
 	Team2Wins    int               `json:"team2Wins"`
 	TeamWinner   *int              `json:"teamWinner"`
-	WinnerSide   *string           `json:"winnerSide"`
 	Matches      []SeriesMatchView `json:"matches"`
 }
 
@@ -229,10 +224,10 @@ type EventOfMatchView struct {
 	Series       SeriesMini `json:"series"`
 }
 
-// SeriesMini 是蓝/红胜场。
+// SeriesMini 是 1队/2队 胜场（不是蓝/红方胜场）。
 type SeriesMini struct {
-	BlueWins int `json:"blueWins"`
-	RedWins  int `json:"redWins"`
+	Team1Wins int `json:"team1Wins"`
+	Team2Wins int `json:"team2Wins"`
 }
 
 // RegistrationOptionView 是对局里可选的报名者。

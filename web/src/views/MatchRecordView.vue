@@ -16,7 +16,7 @@
             </div>
             <p class="page-subtitle">
               {{ data.event.region }} · BO{{ data.event.bestOf }} ·
-              系列比分 蓝 {{ data.event.series.blueWins }} : {{ data.event.series.redWins }} 红
+              系列比分 1队 {{ data.event.series.team1Wins }} : {{ data.event.series.team2Wins }} 2队
               <span v-if="data.match.submittedAt"> · 提交于 {{ formatDateTime(data.match.submittedAt) }}</span>
             </p>
           </div>

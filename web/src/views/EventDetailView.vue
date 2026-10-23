@@ -205,13 +205,15 @@
                     </div>
                   </div>
 
-                  <div class="record-status">
+                  <div class="record-status" :class="{ 'series-result': seriesResult }">
                     <template v-if="!detail.permissions.isEnded">
                       记录中
                       <span v-if="detail.series.matches.length" class="muted">· 已记录 {{ detail.series.matches.length }} 局</span>
                     </template>
-                    <template v-else-if="detail.series.teamWinner">
-                      {{ detail.series.teamWinner }}队 {{ detail.series.winnerSide === 'blue' ? '蓝色方' : '红色方' }} 胜
+                    <template v-else-if="seriesResult">
+                      <span class="series-result-team team1" :class="seriesResult.team1Class">{{ seriesResult.team1 }}</span>
+                      <span class="series-result-score">{{ seriesResult.score }}</span>
+                      <span class="series-result-team team2" :class="seriesResult.team2Class">{{ seriesResult.team2 }}</span>
                     </template>
                     <template v-else>比赛已结束</template>
                   </div>
@@ -225,8 +227,8 @@
                       @click="openMatch(match.gameNo)"
                     >
                       <span class="match-no">第 {{ match.gameNo }} 局</span>
-                      <span v-if="match.winnerTeam" class="match-result">
-                        {{ match.winnerTeam }}队 · 胜 · {{ match.winnerSide === 'blue' ? '蓝方' : '红方' }}
+                      <span v-if="match.winnerTeam" class="match-result" :class="`team${match.winnerTeam}`">
+                        {{ match.winnerTeam }}队 · 胜
                       </span>
                       <span v-else class="match-result">记录中</span>
                       <span class="muted small">{{ match.durationMs ? `· ${formatDuration(match.durationMs)}` : '· 时长未记录' }}</span>
@@ -454,6 +456,18 @@ const hasRoster = computed(() => {
 })
 
 const eventTitle = computed(() => eventDisplayTitle(detail.value?.event))
+const seriesResult = computed(() => {
+  const series = detail.value?.series
+  if (!series?.teamWinner) return null
+  const team1Win = series.teamWinner === 1
+  return {
+    team1: `${team1Win ? '（胜）' : '（负）'}1队`,
+    team2: `2队${team1Win ? '（负）' : '（胜）'}`,
+    score: `${series.team1Wins} VS ${series.team2Wins}`,
+    team1Class: team1Win ? 'winner' : 'loser',
+    team2Class: team1Win ? 'loser' : 'winner',
+  }
+})
 
 const canShowRegisterButton = computed(() => {
   if (!detail.value) return false
@@ -1033,6 +1047,29 @@ onMounted(reload)
   font-size: 12px;
   font-weight: 600;
 }
+.record-status.series-result {
+  background: transparent;
+  padding: 0;
+  gap: 8px;
+  font-size: 14px;
+}
+.series-result-team {
+  font-weight: 800;
+}
+.series-result-team.team1 {
+  color: #d9a441;
+}
+.series-result-team.team2 {
+  color: #ff6b6b;
+}
+.series-result-team.loser {
+  opacity: 0.55;
+}
+.series-result-score {
+  color: var(--app-text);
+  font-size: 14px;
+  font-weight: 800;
+}
 .match-title {
   font-size: 15px;
   font-weight: 700;
@@ -1082,6 +1119,12 @@ onMounted(reload)
 .match-result {
   color: #c9d4e2;
   font-size: 12px;
+}
+.match-result.team1 {
+  color: #d9a441;
+}
+.match-result.team2 {
+  color: #ff6b6b;
 }
 .match-open {
   margin-left: auto;

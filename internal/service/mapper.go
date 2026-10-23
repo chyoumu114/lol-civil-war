@@ -284,66 +284,28 @@ func (a *App) positionPowers(r store.Registration) any {
 func round1(v float64) float64 { return math.Round(v*10) / 10 }
 func round2(v float64) float64 { return math.Round(v*100) / 100 }
 
-// seriesOf 计算系列赛比分（按蓝/红与 1队/2队两套口径）。
+// seriesOf 计算系列赛比分。系列赛只按 1队/2队 统计，蓝/红方仅属于单局。
 func (a *App) seriesOf(e store.Event, matches []store.Match) SeriesView {
+	team1Wins, team2Wins := teamSeries(matches)
+	need := match.WinsRequired(e.BestOf)
 	view := SeriesView{
 		BestOf:       e.BestOf,
-		WinsRequired: match.WinsRequired(e.BestOf),
+		WinsRequired: need,
+		Team1Wins:    team1Wins,
+		Team2Wins:    team2Wins,
 		Matches:      make([]SeriesMatchView, 0, len(matches)),
 	}
 
-	lastTeam1Side := ""
-	for _, m := range matches {
-		if m.BlueWin != nil {
-			if *m.BlueWin {
-				view.BlueWins++
-			} else {
-				view.RedWins++
-			}
-			side := m.Team1Side
-			if side == "" {
-				side = "blue"
-			}
-			lastTeam1Side = side
-			if (side == "blue" && *m.BlueWin) || (side == "red" && !*m.BlueWin) {
-				view.Team1Wins++
-			} else {
-				view.Team2Wins++
-			}
-		}
-	}
-
-	if side, ok := match.Winner(e.BestOf, view.BlueWins, view.RedWins); ok {
-		s := side
-		view.Winner = &s
-	}
-
-	need := view.WinsRequired
-	if view.Team1Wins >= need || view.Team2Wins >= need {
+	if team1Wins >= need || team2Wins >= need {
 		winner := 1
-		if view.Team1Wins <= view.Team2Wins {
+		if team1Wins < team2Wins {
 			winner = 2
 		}
 		view.TeamWinner = &winner
-		if lastTeam1Side == "" {
-			lastTeam1Side = "blue"
-		}
-		side := lastTeam1Side
-		if winner == 2 {
-			if lastTeam1Side == "blue" {
-				side = "red"
-			} else {
-				side = "blue"
-			}
-		}
-		view.WinnerSide = &side
 	}
 
 	for _, m := range matches {
-		side := m.Team1Side
-		if side == "" {
-			side = "blue"
-		}
+		side := defaultSide(m.Team1Side)
 		sm := SeriesMatchView{
 			ID:          m.ID,
 			GameNo:      m.GameNo,
@@ -354,14 +316,10 @@ func (a *App) seriesOf(e store.Event, matches []store.Match) SeriesView {
 			SubmittedAt: a.isoPtr(m.SubmittedAt),
 		}
 		if m.BlueWin != nil {
-			winnerSide := "blue"
-			if !*m.BlueWin {
-				winnerSide = "red"
-			}
-			sm.WinnerSide = &winnerSide
-			winnerTeam := 1
-			if side != winnerSide {
-				winnerTeam = 2
+			// winnerTeam 只在本局内有意义；系列赛层不推导“胜方颜色”。
+			winnerTeam := 2
+			if (side == "blue" && *m.BlueWin) || (side == "red" && !*m.BlueWin) {
+				winnerTeam = 1
 			}
 			sm.WinnerTeam = &winnerTeam
 		}

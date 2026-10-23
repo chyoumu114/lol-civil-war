@@ -136,7 +136,7 @@ func (a *App) ShowMatch(ctx context.Context, event store.Event, gameNo int, view
 	if err != nil {
 		return MatchDetailView{}, err
 	}
-	blueWins, redWins := blueRedWins(matches)
+	team1Wins, team2Wins := teamSeries(matches)
 
 	registrations, err := a.St.RegistrationsByEvent(ctx, event.ID)
 	if err != nil {
@@ -156,7 +156,7 @@ func (a *App) ShowMatch(ctx context.Context, event store.Event, gameNo int, view
 		},
 		Players:       make([]PlayerView, 0, len(players)),
 		Bans:          make([]BanView, 0, len(bans)),
-		Event:         a.eventOfMatchView(event, blueWins, redWins),
+		Event:         a.eventOfMatchView(event, team1Wins, team2Wins),
 		Registrations: a.registrationOptions(registrations),
 		RatingLabels:  ratingLabels(),
 	}
@@ -712,7 +712,7 @@ func (a *App) suggestMapping(ctx context.Context, matchID int64, playersRaw json
 	return out, nil
 }
 
-func (a *App) eventOfMatchView(event store.Event, blueWins, redWins int) EventOfMatchView {
+func (a *App) eventOfMatchView(event store.Event, team1Wins, team2Wins int) EventOfMatchView {
 	return EventOfMatchView{
 		ID:           event.ID,
 		Region:       event.Region,
@@ -721,7 +721,7 @@ func (a *App) eventOfMatchView(event store.Event, blueWins, redWins int) EventOf
 		WinsRequired: match.WinsRequired(event.BestOf),
 		IsEnded:      event.EndedAt != nil,
 		EndedAt:      a.isoPtr(event.EndedAt),
-		Series:       SeriesMini{BlueWins: blueWins, RedWins: redWins},
+		Series:       SeriesMini{Team1Wins: team1Wins, Team2Wins: team2Wins},
 	}
 }
 
@@ -827,21 +827,6 @@ func teamSeries(matches []store.Match) (int, int) {
 		}
 	}
 	return team1Wins, team2Wins
-}
-
-func blueRedWins(matches []store.Match) (int, int) {
-	blue, red := 0, 0
-	for _, m := range matches {
-		if m.BlueWin == nil {
-			continue
-		}
-		if *m.BlueWin {
-			blue++
-		} else {
-			red++
-		}
-	}
-	return blue, red
 }
 
 func defaultSide(side string) string {

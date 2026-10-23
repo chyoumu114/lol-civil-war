@@ -30,8 +30,10 @@
             <StateTag :status="event.status" />
             <a-tag v-if="event.hasBp" size="small" color="purple">BP</a-tag>
             <div class="spacer" />
-            <span v-if="event.matchCount" class="event-score">
-              {{ event.blueWins }} : {{ event.redWins }}
+            <span v-if="event.matchCount" class="event-score" title="系列赛比分（1队 : 2队）">
+              <span class="event-score-team team1">1队</span>
+              {{ event.team1Wins }} : {{ event.team2Wins }}
+              <span class="event-score-team team2">2队</span>
             </span>
           </div>
           <div class="event-title">{{ eventDisplayTitle(event) }}</div>
@@ -174,9 +176,22 @@ onMounted(fetchPage)
   color: var(--app-muted);
 }
 .event-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-weight: 800;
   color: var(--app-primary);
-  letter-spacing: 1px;
+  letter-spacing: 0;
+}
+.event-score-team {
+  font-size: 11px;
+  font-weight: 700;
+}
+.event-score-team.team1 {
+  color: #d9a441;
+}
+.event-score-team.team2 {
+  color: #ff6b6b;
 }
 .event-meta {
   display: grid;

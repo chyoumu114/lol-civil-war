@@ -354,6 +354,32 @@ func TestCivilWarFlow(t *testing.T) {
 		t.Fatalf("结束后状态 = %v", ended["event"])
 	}
 
+	// 蓝/红方只在单局内有意义：1队为红方、蓝方获胜时，系列赛胜方必须是 2队。
+	detailAfterEnd := organizer.do("GET", fmt.Sprintf("/api/groups/%s/events/%d", key, eventID), nil, http.StatusOK)
+	series := detailAfterEnd["series"].(map[string]any)
+	if series["team1Wins"].(float64) != 0 || series["team2Wins"].(float64) != 1 || series["teamWinner"].(float64) != 2 {
+		t.Fatalf("系列赛应按 1队/2队 计分，实际: %v", series)
+	}
+	if _, ok := series["winnerSide"]; ok {
+		t.Fatalf("系列赛不应再返回胜方颜色: %v", series)
+	}
+	matchSummary := series["matches"].([]any)[0].(map[string]any)
+	if _, ok := matchSummary["winnerSide"]; ok || matchSummary["winnerTeam"].(float64) != 2 {
+		t.Fatalf("单局胜方队伍异常: %v", matchSummary)
+	}
+	list := organizer.do("GET", fmt.Sprintf("/api/groups/%s/events", key), nil, http.StatusOK)
+	var listed map[string]any
+	for _, raw := range list["data"].([]any) {
+		item := raw.(map[string]any)
+		if int64(item["id"].(float64)) == eventID {
+			listed = item
+			break
+		}
+	}
+	if listed == nil || listed["team1Wins"].(float64) != 0 || listed["team2Wins"].(float64) != 1 {
+		t.Fatalf("组织列表比分应按 1队/2队 计分，实际: %v", listed)
+	}
+
 	// 锁定校验
 	organizer.do("PUT", fmt.Sprintf("/api/groups/%s/events/%d/matches/1", key, eventID),
 		map[string]any{"team1Side": "blue"}, http.StatusConflict)

@@ -80,8 +80,8 @@ func (a *App) ListEvents(ctx context.Context, group store.Group, status string, 
 			EventView:         a.eventView(event),
 			RegistrationCount: regCounts[event.ID],
 			MatchCount:        stat.Count,
-			BlueWins:          stat.BlueWins,
-			RedWins:           stat.RedWins,
+			Team1Wins:         stat.Team1Wins,
+			Team2Wins:         stat.Team2Wins,
 		})
 	}
 
