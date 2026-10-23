@@ -35,7 +35,7 @@
                 </div>
               </td>
               <td>
-                <img class="tier-icon" :src="`/t/T${tierOf(item.rating)}.png`" :alt="`T${tierOf(item.rating)}`" :title="`T${tierOf(item.rating)}`" />
+                <TierBadge :tier="tierOf(item.rating)" />
               </td>
               <td class="kda-value">{{ Number(item.kda || 0).toFixed(1) }}</td>
               <td class="rating-cell">
@@ -67,6 +67,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message } from '@arco-design/web-vue'
+import TierBadge from '../components/TierBadge.vue'
 import StarRating from '../components/StarRating.vue'
 import { api } from '../api'
 import { formatNumber } from '../utils/format'
@@ -189,11 +190,6 @@ onMounted(load)
   font-size: 13px;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.tier-icon {
-  height: 30px;
-  width: auto;
-  display: block;
 }
 .kda-value {
   font-size: 14px;

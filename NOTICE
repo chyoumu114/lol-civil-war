@@ -30,10 +30,13 @@ Third-party notices / 第三方声明
    subject to Riot Games' terms and must not be redistributed as part of
    this project.
 
-2. UI icons
-   Small position/tier icons under web/public are used for UI illustration.
-   They are excluded from the GPL grant to the extent they contain
-   third-party artwork. Replace them if you need a fully GPL-clean asset set.
+2. Tier badges and position icons
+   The T0-T4 tier badge SVG in web/src/components/TierBadge.vue is original
+   artwork created for this project and is licensed under GPL-3.0-or-later.
+   It does not copy artwork from Tencent, Riot Games, or 101.qq.com.
+
+   Position icons under web/public/positions are used for UI illustration;
+   if they contain third-party artwork, they are excluded from the GPL grant.
 
 3. Go dependencies
    github.com/go-sql-driver/mysql is distributed under the Mozilla Public
