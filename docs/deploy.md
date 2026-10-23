@@ -1,5 +1,7 @@
 # 部署指南
 
+> 第一次在 Linux 上部署、或者不熟悉 Docker/反向代理：先看 [小白版部署教程](deploy-beginner.md)。
+
 目标：把服务部署到一台 Linux 服务器，用 HTTPS 域名对外提供访问。
 应用与 MySQL 都由 Docker Compose 管理，数据库不对外暴露端口。
 

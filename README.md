@@ -38,6 +38,9 @@
 
 ## 部署（从 GitHub 拉取，按顺序执行）
 
+> **第一次部署 / 不熟悉 Linux？**
+> 建议先看 [小白版部署教程](docs/deploy-beginner.md)：从安装 Docker、国内网络、SSH 隧道到 Caddy HTTPS 和常见报错，按步骤操作。
+
 ```bash
 # 1. 拉取代码
 git clone https://github.com/chyoumu114/lol-civil-war.git
@@ -61,7 +64,7 @@ docker compose ps
 curl -fsS http://127.0.0.1:18020/api/health
 ```
 
-浏览器访问 `http://localhost:18020/`，首次使用点「注册」用邮箱创建账号即可。数据在 `lol-civil-war-mysql-data` 卷里。
+在服务器本机或通过 SSH 隧道访问 `http://localhost:18020/`，首次使用点「注册」用邮箱创建账号即可；远程服务器直接访问公网 IP 默认不可用，见小白教程。数据在 `lol-civil-war-mysql-data` 卷里。
 
 > Compose 自带 `build`：从源码部署时用 `docker compose up -d --build` 即可。
 > 生产也可以改为你发布到镜像仓库的具体镜像，此时用 `docker compose up -d` 直接拉取：

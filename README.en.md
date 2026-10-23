@@ -38,6 +38,9 @@ The backend was rewritten in Go 1.27.3 as a single binary with MySQL 8 and an em
 
 ## Deployment (from GitHub, run in order)
 
+> **New to Linux or Docker?**
+> Follow the step-by-step [beginner deployment guide](docs/deploy-beginner.md) (Chinese) first. It covers Docker installation, network mirrors, SSH tunnels, Caddy HTTPS, and common errors.
+
 > **Localization note**
 >
 > To keep the codebase simple, the UI and backend messages are currently Chinese only. If you deploy for an English-speaking or other non-Chinese community, use an AI to translate the project's Chinese text into your target language before building and deploying. This English README is a documentation translation, not a runtime language pack.
@@ -65,7 +68,7 @@ docker compose ps
 curl -fsS http://127.0.0.1:18020/api/health
 ```
 
-Open `http://localhost:18020/` and click **Register** to create an email account. Data is stored in the `lol-civil-war-mysql-data` volume.
+Open `http://localhost:18020/` on the server or through an SSH tunnel, then click **Register** to create an email account. The app binds to loopback only; for a remote server, see the beginner guide for a tunnel or reverse proxy. Data is stored in the `lol-civil-war-mysql-data` volume.
 
 `YOUR_GROUP_ID` is any stable numeric ID used to isolate a community. For a QQ group, use the QQ group number; for Discord, WeChat, or another platform, use an equivalent numeric group ID and translate the QQ-specific labels in the UI as needed.
 
