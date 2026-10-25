@@ -182,7 +182,14 @@ docker compose exec app /app/lol-civil-war group remove 123456789
 
 # 源码运行（需带上 LCW_DB_* 环境变量）
 go run ./cmd/lol-civil-war group add 123456789
+
+# 本地开发库（make dev 启动的 3307）
+LCW_DB_HOST=127.0.0.1 LCW_DB_PORT=3307 LCW_DB_USER=root \
+LCW_DB_PASSWORD=lcw-dev LCW_DB_NAME=lol_civil_war_dev \
+go run ./cmd/lol-civil-war group add 123456789
 ```
+
+> `make dev` 只把数据库环境变量传给后端进程；另开终端执行 CLI 时不会继承，需要像上面一样显式指定。
 
 `group add` 支持追加备注：`group add 123456789 "周五内战群"`。
 

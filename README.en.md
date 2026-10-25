@@ -190,7 +190,14 @@ docker compose exec app /app/lol-civil-war group remove 123456789
 
 # Running from source (with LCW_DB_* environment variables)
 go run ./cmd/lol-civil-war group add 123456789
+
+# Local development database (port 3307, started by make dev)
+LCW_DB_HOST=127.0.0.1 LCW_DB_PORT=3307 LCW_DB_USER=root \
+LCW_DB_PASSWORD=lcw-dev LCW_DB_NAME=lol_civil_war_dev \
+go run ./cmd/lol-civil-war group add 123456789
 ```
+
+> `make dev` only exports the database environment to its backend process. A new terminal running the CLI does not inherit it; set the variables explicitly as shown above.
 
 `group add` accepts an optional note: `group add 123456789 "Friday in-house"`.
 
