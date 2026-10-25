@@ -430,6 +430,21 @@ async function submit() {
 .editor-side.left .editor-player {
   flex-direction: row-reverse;
 }
+/* 1 队：选项文字靠右，箭头放到左侧，视觉上紧挨中间的队伍分路。 */
+.editor-side.left :deep(.arco-select-view-value) {
+  flex: 1;
+  width: auto;
+  justify-content: flex-end;
+  text-align: right;
+}
+.editor-side.left :deep(.arco-select-view-suffix) {
+  order: -1;
+  padding-right: 12px;
+  padding-left: 0;
+}
+.editor-side.left :deep(.arco-select-view-input) {
+  text-align: right;
+}
 .editor-select {
   flex: 1;
   min-width: 0;
