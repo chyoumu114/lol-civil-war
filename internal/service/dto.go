@@ -117,14 +117,16 @@ type PermissionsView struct {
 
 // SeriesMatchView 是系列赛中的一局摘要。
 type SeriesMatchView struct {
-	ID          int64   `json:"id"`
-	GameNo      int     `json:"gameNo"`
-	Status      string  `json:"status"`
-	BlueWin     *bool   `json:"blueWin"`
-	Team1Side   string  `json:"team1Side"`
-	WinnerTeam  *int    `json:"winnerTeam"`
-	DurationMS  *int64  `json:"durationMs"`
-	SubmittedAt *string `json:"submittedAt"`
+	ID             int64    `json:"id"`
+	GameNo         int      `json:"gameNo"`
+	Status         string   `json:"status"`
+	BlueWin        *bool    `json:"blueWin"`
+	Team1Side      string   `json:"team1Side"`
+	WinnerTeam     *int     `json:"winnerTeam"`
+	DurationMS     *int64   `json:"durationMs"`
+	SubmittedAt    *string  `json:"submittedAt"`
+	Team1Champions []string `json:"team1Champions"`
+	Team2Champions []string `json:"team2Champions"`
 }
 
 // SeriesView 是系列赛比分。

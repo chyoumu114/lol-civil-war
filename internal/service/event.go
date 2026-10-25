@@ -196,6 +196,15 @@ func (a *App) EventDetail(ctx context.Context, event store.Event, viewer store.M
 	if err != nil {
 		return EventDetailView{}, err
 	}
+	// 比赛记录卡片需要每局双方的英雄头像；BO5 最多 5 局，逐局查询足够轻量。
+	playersByMatch := make(map[int64][]store.MatchPlayer, len(matches))
+	for _, match := range matches {
+		players, playerErr := a.St.PlayersByMatch(ctx, match.ID)
+		if playerErr != nil {
+			return EventDetailView{}, playerErr
+		}
+		playersByMatch[match.ID] = players
+	}
 	roster, err := a.St.RosterByEvent(ctx, event.ID)
 	if err != nil {
 		return EventDetailView{}, err
@@ -243,7 +252,7 @@ func (a *App) EventDetail(ctx context.Context, event store.Event, viewer store.M
 		}
 	}
 
-	series := a.seriesOf(event, matches)
+	series := a.seriesOf(event, matches, playersByMatch)
 	rosterComplete := rosterPayloadIsComplete(rosterPayload(roster))
 
 	var draft *DraftView

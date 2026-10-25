@@ -285,7 +285,7 @@ func round1(v float64) float64 { return math.Round(v*10) / 10 }
 func round2(v float64) float64 { return math.Round(v*100) / 100 }
 
 // seriesOf 计算系列赛比分。系列赛只按 1队/2队 统计，蓝/红方仅属于单局。
-func (a *App) seriesOf(e store.Event, matches []store.Match) SeriesView {
+func (a *App) seriesOf(e store.Event, matches []store.Match, playersByMatch map[int64][]store.MatchPlayer) SeriesView {
 	team1Wins, team2Wins := teamSeries(matches)
 	need := match.WinsRequired(e.BestOf)
 	view := SeriesView{
@@ -307,13 +307,25 @@ func (a *App) seriesOf(e store.Event, matches []store.Match) SeriesView {
 	for _, m := range matches {
 		side := defaultSide(m.Team1Side)
 		sm := SeriesMatchView{
-			ID:          m.ID,
-			GameNo:      m.GameNo,
-			Status:      m.Status,
-			BlueWin:     m.BlueWin,
-			Team1Side:   side,
-			DurationMS:  m.DurationMS,
-			SubmittedAt: a.isoPtr(m.SubmittedAt),
+			ID:             m.ID,
+			GameNo:         m.GameNo,
+			Status:         m.Status,
+			BlueWin:        m.BlueWin,
+			Team1Side:      side,
+			DurationMS:     m.DurationMS,
+			SubmittedAt:    a.isoPtr(m.SubmittedAt),
+			Team1Champions: []string{},
+			Team2Champions: []string{},
+		}
+		for _, player := range playersByMatch[m.ID] {
+			if player.Champion == "" {
+				continue
+			}
+			if player.Side == side {
+				sm.Team1Champions = append(sm.Team1Champions, player.Champion)
+			} else {
+				sm.Team2Champions = append(sm.Team2Champions, player.Champion)
+			}
 		}
 		if m.BlueWin != nil {
 			// winnerTeam 只在本局内有意义；系列赛层不推导“胜方颜色”。

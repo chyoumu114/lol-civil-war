@@ -219,21 +219,45 @@
                   </div>
 
                   <div v-if="detail.series.matches.length" class="match-list">
-                    <button
-                      v-for="match in detail.series.matches"
-                      :key="match.id"
-                      type="button"
-                      class="match-row"
-                      @click="openMatch(match.gameNo)"
-                    >
-                      <span class="match-no">第 {{ match.gameNo }} 局</span>
-                      <span v-if="match.winnerTeam" class="match-result" :class="`team${match.winnerTeam}`">
-                        {{ match.winnerTeam }}队 · 胜
-                      </span>
-                      <span v-else class="match-result">记录中</span>
-                      <span class="muted small">{{ match.durationMs ? `· ${formatDuration(match.durationMs)}` : '· 时长未记录' }}</span>
-                      <span class="match-open">查看记录 <icon-right /></span>
-                    </button>
+                    <div v-for="match in detail.series.matches" :key="match.id" class="match-item">
+                      <button
+                        type="button"
+                        class="match-row"
+                        @click="openMatch(match.gameNo)"
+                      >
+                        <span class="match-no">第 {{ match.gameNo }} 局</span>
+                        <span v-if="match.winnerTeam" class="match-result" :class="`team${match.winnerTeam}`">
+                          {{ match.winnerTeam }}队 · 胜
+                        </span>
+                        <span v-else class="match-result">记录中</span>
+                        <span class="muted small">{{ match.durationMs ? `· ${formatDuration(match.durationMs)}` : '· 时长未记录' }}</span>
+                        <span class="match-open">查看记录 <icon-right /></span>
+                      </button>
+                      <div
+                        v-if="match.team1Champions?.length || match.team2Champions?.length"
+                        class="match-champions"
+                      >
+                        <div class="match-champions-side">
+                          <ChampionIcon
+                            v-for="(champion, index) in match.team1Champions"
+                            :key="`t1-${match.id}-${index}`"
+                            :champion="champion"
+                            :version="champions.latestVersion"
+                            :size="18"
+                          />
+                        </div>
+                        <span class="match-champions-vs">VS</span>
+                        <div class="match-champions-side">
+                          <ChampionIcon
+                            v-for="(champion, index) in match.team2Champions"
+                            :key="`t2-${match.id}-${index}`"
+                            :champion="champion"
+                            :version="champions.latestVersion"
+                            :size="18"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                   <a-empty v-else description="还没有对局记录" :image-style="{ height: '44px' }" />
 
@@ -373,6 +397,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Message, Modal } from '@arco-design/web-vue'
+import ChampionIcon from '../components/ChampionIcon.vue'
 import EventEditModal from '../components/EventEditModal.vue'
 import MatchRecordModal from '../components/MatchRecordModal.vue'
 import PlayerInfoModal from '../components/PlayerInfoModal.vue'
@@ -383,6 +408,7 @@ import RegistrationModal from '../components/RegistrationModal.vue'
 import RosterEditorModal from '../components/RosterEditorModal.vue'
 import StateTag from '../components/StateTag.vue'
 import { api } from '../api'
+import { champions, loadChampions } from '../stores/champions'
 import { session } from '../stores/session'
 import { formatDateTime, formatDuration } from '../utils/format'
 import { eventDisplayTitle } from '../utils/event'
@@ -687,7 +713,10 @@ function endEvent() {
   })
 }
 
-onMounted(reload)
+onMounted(() => {
+  reload()
+  loadChampions()
+})
 </script>
 
 <style scoped>
@@ -1100,6 +1129,9 @@ onMounted(reload)
   display: flex;
   flex-direction: column;
 }
+.match-item {
+  min-width: 0;
+}
 .match-row {
   display: flex;
   align-items: center;
@@ -1112,6 +1144,27 @@ onMounted(reload)
   color: var(--app-text);
   cursor: pointer;
   text-align: left;
+}
+.match-champions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px 8px;
+}
+.match-champions-side {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.match-champions-side :deep(.champion-icon) {
+  border-radius: 6px;
+}
+.match-champions-vs {
+  flex: 0 0 auto;
+  color: var(--app-muted);
+  font-size: 10px;
+  font-weight: 700;
 }
 .match-no {
   font-weight: 600;
