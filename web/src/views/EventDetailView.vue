@@ -188,8 +188,12 @@
                 </div>
                 <a-empty v-else description="尚未生成队伍信息" :image-style="{ height: '44px' }" />
 
-                <!-- 比赛记录压缩在队伍信息里 -->
-                <div class="match-section">
+              </a-collapse-item>
+            </a-collapse>
+
+            <a-card :bordered="false" class="section-card match-record-card">
+              <!-- 比赛记录：独立于队伍信息 -->
+              <div class="match-section standalone">
                   <div class="match-head">
                     <span class="match-title">比赛记录</span>
                     <div class="match-head-right">
@@ -266,8 +270,7 @@
                     {{ detail.permissions.isEnded ? '比赛已结束，所有记录已锁定并纳入排行榜。' : '比赛结束前记录可以修改；组织者点击「结束比赛」后锁定并计入排行榜。' }}
                   </div>
                 </div>
-              </a-collapse-item>
-            </a-collapse>
+            </a-card>
           </a-col>
 
           <!-- 右列：报名列表 -->
@@ -1044,11 +1047,14 @@ onMounted(() => {
   pointer-events: none;
 }
 
-/* 比赛记录 */
-.match-section {
-  margin-top: 10px;
-  padding-top: 14px;
-  border-top: 1px solid var(--app-border);
+/* 比赛记录（独立卡片，不放在队伍信息里） */
+.match-record-card {
+  margin-bottom: 16px;
+}
+.match-section.standalone {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
 }
 .match-head {
   display: flex;
