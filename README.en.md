@@ -15,7 +15,7 @@ The backend was rewritten in Go 1.27.3 as a single binary with MySQL 8 and an em
 ## Features
 
 - **Email accounts**: register and sign in with an email address and password; QQ is not required. Every account gets a system-generated unique `user_no`.
-- **Optional OAuth quick login**: QQ Connect is supported as an optional provider for mainland-China deployments; other communities can use email or replace it with their own OAuth provider. On first use, the user completes an email and password; an existing email is verified and linked, while an email account can link QQ later from the profile page.
+- **Optional OAuth quick login**: QQ Connect is supported as an optional provider for mainland-China deployments; other communities can use email or replace it with their own OAuth provider. QQ login creates or uses a QQ-only account directly, with no email/password step; email accounts can link QQ later from the profile page.
 - **Per-group isolation**: all data is isolated by group, and URLs use a random key instead of exposing the group ID.
 - **Whitelist management**: bootstrap through an environment variable and manage groups in the database; groups can be added or removed online without a restart.
 - **Member profiles**: nickname, member ID (labeled as QQ number in the current Chinese UI; editable and unique within the group), peak rank, and preferred positions.
@@ -158,6 +158,8 @@ Email registration is the portable path and works for any community. When QQ Con
 
 QQ Connect is one optional OAuth provider, mainly intended for deployments in mainland China. For Discord, WeChat, or other communities, use email accounts or replace QQ Connect with your own OAuth provider. The current Chinese UI labels the member identifier as “QQ number”; translate or adapt that label if your community does not use QQ.
 
+When QQ Connect is configured, the login page promotes QQ quick login and collapses the email/password form.
+
 #### QQ Connect (optional, mainland China)
 
 1. Create a website application on [QQ Connect](https://connect.qq.com/).
@@ -167,14 +169,12 @@ QQ Connect is one optional OAuth provider, mainly intended for deployments in ma
 
 Rules:
 
-- Every account has a generated unique `user_no`; a QQ OpenID is only an optional binding.
-- Email registration does not invent a nickname. Nickname and the member ID (QQ number in the current UI) are required and completed on first joining a group.
+- Every account has a generated unique `user_no`; a QQ OpenID is a login method.
+- **QQ quick login requires no email or password**: the first login creates a QQ-only account and signs the user in directly.
+- Email registration does not invent a nickname. Nickname and the member ID (QQ number in the current UI) are still required for group registration.
 - On first QQ quick registration, the group nickname defaults to the nickname returned by QQ.
-- **First** QQ quick login redirects to a “complete registration” page and requires email and password:
-  - Email does not exist → create a new account and bind QQ;
-  - Email exists → verify the password, bind QQ if unbound, and reject an account already bound to another QQ.
-- Email users can use quick login after choosing **Profile → Account → Bind QQ**.
-- Legacy QQ accounts are asked to complete an email and password on first login, then keep the original account and group data.
+- Existing email accounts can expand “Use email account” to sign in, then link QQ from **Profile → Account**.
+- Legacy QQ accounts can sign in directly; no email/password completion is required.
 
 QQ Connect returns only an OpenID, not a QQ number. The 5–12 digit member number is entered by the user; it can be changed but must be unique within the group. For non-QQ deployments, treat this field as a member ID.
 

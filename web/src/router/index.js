@@ -41,7 +41,7 @@ const PAGE_TITLES = {
   ranking: '排行榜',
   player: '个人分析',
   profile: '个人资料',
-  'qq-complete': '完成 QQ 注册',
+  'qq-complete': 'QQ 登录',
   champions: '英雄资料库',
   'analysis-of-power': '战力计算器',
 }

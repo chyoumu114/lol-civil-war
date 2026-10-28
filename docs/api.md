@@ -31,11 +31,11 @@
 | POST | `/api/auth/register` | 邮箱注册：`{"email","password"}`，成功即登录 |
 | POST | `/api/auth/login` | 邮箱登录：`{"email","password"}` |
 | GET | `/auth/qq?redirect=/` | 302 到 QQ 授权页；未配置凭据返回 503 |
-| GET | `/auth/qq/callback` | QQ 回调；直接登录或 302 到 `/qq-complete` |
+| GET | `/auth/qq/callback` | QQ 回调；已有 QQ 账号直接登录，未绑定则创建 QQ-only 账号并登录 |
 | GET | `/api/auth/callback` | 同上（QQ 后台兼容地址） |
 | GET | `/auth/qq/bind?redirect=/` | 已登录用户发起绑定 QQ；未登录 401 |
-| GET | `/api/auth/pending` | 查询当前会话是否有待补全的 QQ 身份 |
-| POST | `/api/auth/qq/complete` | 首次 QQ 登录补全：`{"email","password"}` |
+| GET | `/api/auth/pending` | 兼容旧会话：查询待补全的 QQ 身份（新流程不再使用） |
+| POST | `/api/auth/qq/complete` | 兼容旧会话：补全邮箱密码（新流程不再使用） |
 | GET | `/auth/dev?qq=10001&nickname=测试&redirect=/` | 开发登录；`LCW_DEV_LOGIN=false` 时 404 |
 | POST | `/auth/logout` | 退出登录 |
 
@@ -56,16 +56,14 @@
 
 QQ 快捷登录只有配置 `LCW_QQ_APP_ID/KEY` 时可用；未配置时 `/auth/qq` 返回 503，前端不显示入口。
 
-首次 QQ 快捷登录的流程：
+QQ 快捷登录流程：
 
-1. 回调发现 OpenID 未绑定（或旧账号没有邮箱密码）；
-2. 302 到前端 `/qq-complete?redirect=...`；
-3. 页面调用 `/api/auth/pending` 展示 QQ 昵称；
-4. 提交 `/api/auth/qq/complete`：
-   - 邮箱不存在：创建账号（生成 `user_no`）并绑定；
-   - 邮箱已存在：校验密码；未绑定 QQ 则绑定，已绑定其他 QQ 返回 409。
+1. 回调用 OpenID 查询已有账号；
+2. 已有账号直接登录；
+3. 没有账号则创建 QQ-only 账号（生成 `user_no`，不要求邮箱/密码）并登录；
+4. 不再跳转 `/qq-complete`。
 
-已登录邮箱用户可访问 `/auth/qq/bind` 绑定 QQ，之后才能直接用快捷登录。
+已有邮箱账号可以展开登录页的邮箱入口登录，再访问 `/auth/qq/bind` 绑定 QQ。`/api/auth/pending` 与 `/api/auth/qq/complete` 仅为旧会话兼容保留。
 
 ## 群
 

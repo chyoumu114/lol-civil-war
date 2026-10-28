@@ -308,6 +308,8 @@ sudo ufw status
 3. 把 AppID/AppKey 填到 `.env` 的 `LCW_QQ_APP_ID` / `LCW_QQ_APP_KEY`；
 4. `docker compose up -d` 重建容器。
 
+配置成功后登录页默认显示 QQ 快捷登录，邮箱/密码入口折叠。首次 QQ 登录会直接创建账号并进入，不需要额外设置邮箱和密码；已有邮箱账号仍可展开邮箱入口登录。
+
 ## 8. 常见报错
 
 | 现象 | 原因 | 处理 |

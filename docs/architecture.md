@@ -98,14 +98,9 @@ web/                     Vue 3 源码
 ### 5.3 QQ 快捷登录
 
 1. `/auth/qq` 保存 state 与回跳地址，跳到 QQ 授权页；
-2. 回调 `/auth/qq/callback` 换 OpenID：
-   - OpenID 已绑定且账号已设置邮箱密码 → 直接登录；
-   - OpenID 对应旧账号但没有邮箱密码 → 进入补全流程（绑定到原 `user_no`）；
-   - OpenID 未绑定 → 进入补全流程；
-3. 补全页 `/qq-complete`：
-   - 邮箱不存在 → 新建账号（生成 `user_no`）并绑定 OpenID；
-   - 邮箱已存在 → 校验密码；未绑定 QQ 则绑定，已绑定其他 QQ → 409；
-   - 补全成功后邮箱、密码、OpenID 都挂到同一个账号上。
+2. 回调 `/auth/qq/callback` 换 OpenID；
+3. 按 OpenID 查询账号：已存在则直接登录；不存在则创建 QQ-only 账号（生成 `user_no`，不要求邮箱/密码）并登录；
+4. 不再进入 `/qq-complete`；旧的补全接口只为历史会话保留。
 
 ### 5.4 已登录用户绑定 QQ
 

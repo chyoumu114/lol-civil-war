@@ -1,10 +1,7 @@
 package web
 
 import (
-	"errors"
 	"net/http"
-	"net/url"
-	"strings"
 
 	"github.com/chyoumu114/lol-civil-war/internal/service"
 	"github.com/chyoumu114/lol-civil-war/internal/store"
@@ -143,40 +140,20 @@ func (s *Server) handleQQCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 普通快捷登录：已绑定且已设置密码的账号直接登录。
-	user, err := s.App.St.UserByQQOpenID(r.Context(), profile.OpenID)
-	switch {
-	case err == nil:
-		if user.Email != nil && *user.Email != "" && user.PasswordHash != nil && *user.PasswordHash != "" {
-			_ = s.App.St.UpdateUserNameAvatar(r.Context(), user.ID, profile.Nickname, profile.Avatar)
-			if err := s.sessions.rotate(r.Context(), w, r, user.ID); err != nil {
-				writeError(w, err)
-				return
-			}
-			http.Redirect(w, r, redirectTarget, http.StatusFound)
-			return
-		}
-		// 旧数据账号：有 openid 但没有邮箱密码，补全到同一个账号。
-		userID := user.ID
-		state.session.QQPendingUserID = &userID
-	case errors.Is(err, store.ErrNotFound):
-		state.session.QQPendingUserID = nil
-	default:
+	// 普通快捷登录：已有 QQ 账号直接登录，没有则创建 QQ-only 账号。
+	// 不再要求绑定邮箱和密码。
+	user, err := s.App.LoginQQ(r.Context(), profile.OpenID, profile.Nickname, avatarValue(profile.Avatar))
+	if err != nil {
 		writeError(w, err)
 		return
 	}
-
-	// 首次快捷登录：先补全邮箱密码。
-	state.session.QQPendingOpenID = profile.OpenID
-	state.session.QQPendingName = truncateRunes(strings.TrimSpace(profile.Nickname), 64)
-	state.session.QQPendingAvatar = truncateRunes(avatarValue(profile.Avatar), 255)
 	state.session.OAuthState = ""
-	if err := s.App.St.PutSession(r.Context(), state.session); err != nil {
+	state.session.OAuthRedirect = ""
+	if err := s.sessions.rotate(r.Context(), w, r, user.ID); err != nil {
 		writeError(w, err)
 		return
 	}
-	target := "/qq-complete?redirect=" + url.QueryEscape(redirectTarget)
-	http.Redirect(w, r, target, http.StatusFound)
+	http.Redirect(w, r, redirectTarget, http.StatusFound)
 }
 
 // handleQQPending 返回当前会话中待补全的 QQ 身份（给完成注册页展示）。

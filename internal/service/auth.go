@@ -176,6 +176,45 @@ func (a *App) CompleteQQ(ctx context.Context, pending PendingQQ, email, password
 	return user, nil
 }
 
+// LoginQQ 使用 QQ 登录，不存在则直接创建只有 QQ 的账号。
+// QQ 登录不要求邮箱和密码，账号仍有系统生成的 user_no。
+func (a *App) LoginQQ(ctx context.Context, openid, name, avatar string) (store.User, error) {
+	openid = strings.TrimSpace(openid)
+	if openid == "" {
+		return store.User{}, NewError(502, "QQ 登录失败：无法获取 OpenID")
+	}
+	name = truncateRunes(strings.TrimSpace(name), 64)
+	if name == "" {
+		name = "QQ 用户"
+	}
+	avatarPtr := optionalString(avatar)
+
+	if user, err := a.St.UserByQQOpenID(ctx, openid); err == nil {
+		if err := a.St.UpdateUserNameAvatar(ctx, user.ID, name, avatarPtr); err != nil {
+			return store.User{}, err
+		}
+		return a.St.UserByID(ctx, user.ID)
+	} else if !errors.Is(err, store.ErrNotFound) {
+		return store.User{}, err
+	}
+
+	userNo, err := a.newUserNo(ctx)
+	if err != nil {
+		return store.User{}, err
+	}
+	user, err := a.St.CreateUser(ctx, userNo, nil, nil, &openid, name, avatarPtr, false)
+	if err != nil {
+		// 并发回调可能已经创建了同一 QQ，重新按 OpenID 取一次。
+		if errors.Is(err, store.ErrDuplicate) {
+			if existing, findErr := a.St.UserByQQOpenID(ctx, openid); findErr == nil {
+				return existing, nil
+			}
+		}
+		return store.User{}, err
+	}
+	return user, nil
+}
+
 // BindQQ 已登录用户绑定 QQ 快捷登录。
 func (a *App) BindQQ(ctx context.Context, userID int64, openid, name string, avatar *string) (store.User, error) {
 	openid = strings.TrimSpace(openid)
