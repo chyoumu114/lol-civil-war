@@ -1,6 +1,6 @@
 # 安全加固记录
 
-本文记录 2026-11 依据安全审计（`shenji.md`）完成的修复。审计报告原文只保存在本机，未随仓库提交。
+本文记录 2026-11 依据三轮安全审计完成的修复与上线记录。审计原文（`shenji.md`、`lol-civil-war-security-audit-round3.md`）只保存在本机，未随仓库提交。
 
 ## 1. 修复清单
 
@@ -20,7 +20,7 @@
 | L-03 | 反斜杠开放重定向 | `SafeRedirect` 用 `url.Parse` 校验，并额外拒绝反斜杠、控制字符与 `.`/`..` 段 | `internal/service/auth.go` |
 | L-04 | CSRF Token 走 query | 删除 `_token` 查询参数回退，只接受请求头 | `internal/web/session.go` |
 | L-05 | `match_players.raw` 无约束 | 只接受 JSON 对象且 ≤8KB；单人 raw 结构与体积都受限 | `internal/service/match.go` |
-| L-06 | 群白名单存在性 oracle / 解析路径建群 | 未开通统一返回 404 中性文案；解析路径不再建群；DB 白名单由 `group add` 建档，仅静态环境变量白名单允许首访建档 | `internal/service/group.go`、`store/admin.go` |
+| L-06 | 群白名单存在性 oracle / 解析路径建群 | 未开通统一返回 404 中性文案；解析路径完全只读；DB 白名单由 `group add` 建档，环境变量白名单在启动期由 `provisionEnvGroups` 建档（N-4） | `internal/service/group.go`、`store/admin.go`、`cmd/lol-civil-war/main.go` |
 | L-07 | 随机源静默降级 | 删除固定 key 降级；`randomDigits`/`newUserNo` 返回错误；`crypto/rand.Text` 失败即 panic；随机串用拒绝采样 | `service/auth.go`、`service/group.go`、`store/upgrade.go`、`web/session.go` |
 | L-08 | 配置默认值不安全 | 数据库口令为空且非 `LCW_DEV_MODE` 时拒绝启动；`BaseURL` 格式校验；`TrustProxy` 默认 false | `internal/config/config.go` |
 | L-09 | 应用账号需要 DDL 权限 | 新增 `migrate` 子命令与 `LCW_MIGRATE_ON_START=false`，运行时可只给 DML 权限 | `cmd/lol-civil-war`、`internal/store/store.go` |
@@ -42,7 +42,9 @@
 
 ## 3. 第三轮回归修复（2026-11-10）
 
-在 v0.5.0 上线后，依据第三轮审计报告又做了一轮加固：
+在 v0.5.0 上线后，依据第三轮审计报告又做了一轮加固。
+
+> 说明：第三轮报告对 M-02（账号级限速）与 L-10（登录审计）标注为“未修复/部分修复”，但复核 v0.5.0 HEAD 确认两项当时已经实现；本轮保留实现并补充测试与注册审计事件。以下修复已随 **v0.5.1** 上线。
 
 | 编号 | 处理方式 | 主要位置 |
 | --- | --- | --- |
@@ -63,16 +65,16 @@
 ## 4. 残留风险（未在本轮代码中完全消除）
 
 - **注册接口仍会提示邮箱已注册**：已加 IP/邮箱计数与审计，但换邮箱批量探测仍可行。彻底消除需要邮箱验证码流程。
-- **ROFL 解析器仍一次性读入最多 32MB 元数据**：已通过上传上限与并发配额限制影响面，未改为流式解析。
+- **ROFL 外层元数据仍整体 `json.Unmarshal`**：已把上限降到 8MB、`statsJson` 改流式解码并限制玩家条目；极端文件仍可能有数十 MB 峰值内存，但已受上传上限与全局并发约束。
 - **限流是单实例进程内状态**：重启清零、多副本不共享；多副本部署需换 Redis 等共享存储。
 - **CSRF**：有会话时严格绑定会话 Token；无会话（登录/注册/入口页）才使用双提交。`XSRF-TOKEN` 尚未改 `__Host-` 前缀（需前端 axios 同步改名），单域名部署下风险有限。
 - **`LCW_MIGRATE_ON_START` 默认仍为 true**：兼容旧部署；按上文关闭后才能真正做到运行时账号无 DDL 权限。
 - **审计日志覆盖关键事件但未做告警**：需要接入日志平台后配置增长率/失败率告警。
 
-## 5. 本地验证
+## 5. 验证
 
 ```bash
-# 单元 + MySQL 集成测试
+# 单元 + MySQL 集成测试（Go 1.26+；发布镜像用 Go 1.27.3）
 LCW_TEST_MYSQL_DSN='root:root@tcp(127.0.0.1:3307)/' go test ./...
 
 # 静态与漏洞扫描
@@ -80,8 +82,27 @@ go vet ./...
 gosec -severity medium -confidence medium ./...
 govulncheck ./...
 
-# 从旧库结构升级
+# 从旧库结构升级（v0.5.1 无结构变更，可跳过）
 lol-civil-war migrate
 ```
 
-本轮已验证：全量测试通过；旧库（缺 `group_id`、`absolute_expires_at`、旧 `uk_rofl_sha256`）迁移成功；同一录像可在第二个群独立去重；HTTP/HTTPS 两种 Cookie 形态、CSP/HSTS、三类配置自检按预期生效。
+已完成验证：
+
+- Go **1.26.0** 与 **1.27.3** 双工具链下 `go build` / `go vet` / `go test ./...`（含 MySQL 集成）全部通过；
+- `gosec` **0 issues**，`govulncheck` **0 个可达漏洞**；
+- 旧库（缺 `group_id`、`absolute_expires_at`、旧 `uk_rofl_sha256`）迁移成功且幂等，同一录像可在第二个群独立去重；
+- 真实起服冒烟：环境变量白名单启动期建档、HTML 页面刷新会话 CSRF、登录态 `Cookie==Header` 返回 419、静态资源不下发 Cookie；
+- 线上 v0.5.1 验证：健康检查、CSP/HSTS、`__Host-lcw_session`、群解析 200/404、可信代理真实 IP、数据量不变。
+
+> 注意：本机若设置 `GOSUMDB=off`，`GOTOOLCHAIN=go1.26.0` 下载工具链会失败，需临时 `GOSUMDB=sum.golang.org`。
+
+## 6. 发布记录
+
+| 版本 | 代码 | 镜像 | 上线时间 | 部署前备份 |
+| --- | --- | --- | --- | --- |
+| v0.5.0 | `27b5183` | `.../lol-civil-war:v0.5.0` | 2026-11-10 14:22 | `backup-20261110-140024.sql.gz` |
+| v0.5.1 | `e3d47d8` | `.../lol-civil-war:v0.5.1` | 2026-11-10 18:48 | `backup-20261110-184819.sql.gz` |
+
+- v0.5.0：安全加固第一批（含数据库迁移：会话绝对寿命、录像按群去重）。
+- v0.5.1：第三轮审计修复；**无数据库结构变更**。
+- 回滚：把远端 `/opt/lol-civil-war/.env` 的 `LCW_IMAGE` 改回上一版本，执行 `docker compose up -d`。
