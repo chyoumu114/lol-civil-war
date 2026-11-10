@@ -1,15 +1,46 @@
 package web
 
 import (
+	"crypto/subtle"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/chyoumu114/lol-civil-war/internal/service"
 	"github.com/chyoumu114/lol-civil-war/internal/store"
 )
 
+const (
+	// 账号级登录退避（M-01/M-02）：同一邮箱连续失败 10 次后锁 15 分钟。
+	// 计数只发生在失败时，成功登录会清零，避免正常用户被误伤。
+	loginFailLimit  = 10
+	loginFailWindow = 15 * time.Minute
+)
+
 type emailAuthPayload struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+// loginKey 以邮箱为键，不区分大小写；不存在的邮箱也会计数，
+// 因此 429 本身不会成为账号存在性信号。
+func loginKey(email string) string {
+	return "login:" + strings.ToLower(strings.TrimSpace(email))
+}
+
+// loginBlocked 判断当前邮箱是否处于退避期。
+func (s *Server) loginBlocked(w http.ResponseWriter, r *http.Request, email string) bool {
+	if strings.TrimSpace(email) == "" {
+		return false
+	}
+	blocked, retry := s.limiter.blocked(loginKey(email), loginFailLimit, loginFailWindow)
+	if !blocked {
+		return false
+	}
+	w.Header().Set("Retry-After", itoa(retry))
+	auditLog("login_blocked", "email", maskEmail(email), "ip", clientIP(r, s.Cfg.TrustedProxies))
+	writeMessage(w, http.StatusTooManyRequests, "尝试次数过多，请稍后再试")
+	return true
 }
 
 // handleEmailRegister 邮箱注册并直接登录。
@@ -24,6 +55,7 @@ func (s *Server) handleEmailRegister(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	auditLog("register_success", "userNo", user.UserNo, "ip", clientIP(r, s.Cfg.TrustedProxies))
 	s.loginJSON(w, r, user)
 }
 
@@ -34,11 +66,18 @@ func (s *Server) handleEmailLogin(w http.ResponseWriter, r *http.Request) {
 		writeMessage(w, http.StatusUnprocessableEntity, "请求格式不正确")
 		return
 	}
+	if s.loginBlocked(w, r, payload.Email) {
+		return
+	}
 	user, err := s.App.LoginEmail(r.Context(), payload.Email, payload.Password)
 	if err != nil {
+		s.limiter.hit(loginKey(payload.Email), loginFailWindow)
+		auditLog("login_failed", "email", maskEmail(payload.Email), "ip", clientIP(r, s.Cfg.TrustedProxies))
 		writeError(w, err)
 		return
 	}
+	s.limiter.clear(loginKey(payload.Email))
+	auditLog("login_success", "userNo", user.UserNo, "ip", clientIP(r, s.Cfg.TrustedProxies))
 	s.loginJSON(w, r, user)
 }
 
@@ -100,7 +139,9 @@ func (s *Server) handleQQCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	gotState := r.URL.Query().Get("state")
-	if gotState == "" || state.session.OAuthState == "" || gotState != state.session.OAuthState {
+	if gotState == "" || state.session.OAuthState == "" ||
+		subtle.ConstantTimeCompare([]byte(gotState), []byte(state.session.OAuthState)) != 1 {
+		auditLog("oauth_state_mismatch", "ip", clientIP(r, s.Cfg.TrustedProxies))
 		writeMessage(w, http.StatusBadRequest, "登录状态已过期，请重新发起 QQ 登录")
 		return
 	}
@@ -136,6 +177,7 @@ func (s *Server) handleQQCallback(w http.ResponseWriter, r *http.Request) {
 			writeError(w, err)
 			return
 		}
+		auditLog("qq_bind_success", "userId", bindID, "ip", clientIP(r, s.Cfg.TrustedProxies))
 		http.Redirect(w, r, redirectTarget, http.StatusFound)
 		return
 	}
@@ -153,6 +195,7 @@ func (s *Server) handleQQCallback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	auditLog("qq_login_success", "userNo", user.UserNo, "ip", clientIP(r, s.Cfg.TrustedProxies))
 	http.Redirect(w, r, redirectTarget, http.StatusFound)
 }
 
@@ -221,6 +264,8 @@ func (s *Server) handleDevLogin(w http.ResponseWriter, r *http.Request) {
 		writeError(w, err)
 		return
 	}
+	auditLog("dev_login", "qq", qq, "userNo", user.UserNo, "ip", clientIP(r, s.Cfg.TrustedProxies))
+	// #nosec G710 -- 目标已过 SafeRedirect（仅站内相对路径）
 	http.Redirect(w, r, service.SafeRedirect(r.URL.Query().Get("redirect")), http.StatusFound)
 }
 
@@ -228,6 +273,9 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if err := s.sessions.logout(r.Context(), w, r); err != nil {
 		writeError(w, err)
 		return
+	}
+	if state := sessionFrom(r.Context()); state != nil && state.session.UserID != nil {
+		auditLog("logout", "userId", *state.session.UserID, "ip", clientIP(r, s.Cfg.TrustedProxies))
 	}
 	writeMessage(w, http.StatusOK, "已退出登录")
 }

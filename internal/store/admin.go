@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"crypto/rand"
 	"database/sql"
 	"errors"
 	"time"
@@ -19,6 +20,12 @@ func (s *Store) AddAllowedGroup(ctx context.Context, number, note string) error 
 		VALUES (?, ?, ?) AS new
 		ON DUPLICATE KEY UPDATE note = new.note`,
 		number, noteValue, now)
+	if err != nil {
+		return err
+	}
+	// 白名单即建档：解析路径不再插入新群（L-06）。
+	// crypto/rand.Text 在随机源不可用时 panic，符合 fail-closed 约定（L-07）。
+	_, err = s.EnsureGroup(ctx, number, rand.Text())
 	return err
 }
 

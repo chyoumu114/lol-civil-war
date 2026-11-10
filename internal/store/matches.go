@@ -308,18 +308,18 @@ func (s *Store) RatingsByMatch(ctx context.Context, matchID int64) ([]Rating, er
 }
 
 // RoflBySHA 按文件摘要查询已解析录像。
-func (s *Store) RoflBySHA(ctx context.Context, sha string) (*RoflUpload, error) {
+func (s *Store) RoflBySHA(ctx context.Context, groupID int64, sha string) (*RoflUpload, error) {
 	row := s.conn().QueryRowContext(ctx, `
-		SELECT id, match_id, file_name, file_size, sha256, game_version, ddragon_version,
+		SELECT id, group_id, match_id, file_name, file_size, sha256, game_version, ddragon_version,
 		       game_length_ms, blue_win, parsed, created_by_member_id, created_at, updated_at
-		FROM rofl_uploads WHERE sha256 = ?`, sha)
+		FROM rofl_uploads WHERE group_id = ? AND sha256 = ?`, groupID, sha)
 	return scanRofl(row)
 }
 
 // RoflByMatch 查询某局关联的录像。
 func (s *Store) RoflByMatch(ctx context.Context, matchID int64) (*RoflUpload, error) {
 	row := s.conn().QueryRowContext(ctx, `
-		SELECT id, match_id, file_name, file_size, sha256, game_version, ddragon_version,
+		SELECT id, group_id, match_id, file_name, file_size, sha256, game_version, ddragon_version,
 		       game_length_ms, blue_win, parsed, created_by_member_id, created_at, updated_at
 		FROM rofl_uploads WHERE match_id = ? ORDER BY id DESC LIMIT 1`, matchID)
 	return scanRofl(row)
@@ -329,10 +329,10 @@ func (s *Store) RoflByMatch(ctx context.Context, matchID int64) (*RoflUpload, er
 func (s *Store) CreateRofl(ctx context.Context, r RoflUpload) (int64, error) {
 	now := time.Now().UTC()
 	res, err := s.conn().ExecContext(ctx, `
-		INSERT INTO rofl_uploads (match_id, file_name, file_size, sha256, game_version, ddragon_version,
+		INSERT INTO rofl_uploads (group_id, match_id, file_name, file_size, sha256, game_version, ddragon_version,
 			game_length_ms, blue_win, parsed, created_by_member_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		nullInt64(r.MatchID), r.FileName, r.FileSize, r.SHA256, r.GameVersion, r.DDragonVersion,
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		r.GroupID, nullInt64(r.MatchID), r.FileName, r.FileSize, r.SHA256, r.GameVersion, r.DDragonVersion,
 		r.GameLengthMS, nullBool(r.BlueWin), rawOrNil(r.Parsed), nullInt64(r.CreatedByMemberID),
 		millis(now), millis(now))
 	if err != nil {
@@ -342,10 +342,11 @@ func (s *Store) CreateRofl(ctx context.Context, r RoflUpload) (int64, error) {
 }
 
 // UpdateRoflOwner 把已有录像归属到当前局并更新文件名/大小。
-func (s *Store) UpdateRoflOwner(ctx context.Context, id, matchID int64, fileName string, fileSize int64) error {
+// 必须带 group_id 条件：录像去重键是 (group_id, sha256)，不能跨群抢占（L-01）。
+func (s *Store) UpdateRoflOwner(ctx context.Context, id, groupID, matchID int64, fileName string, fileSize int64) error {
 	_, err := s.conn().ExecContext(ctx, `
 		UPDATE rofl_uploads SET match_id = ?, file_name = ?, file_size = ?, updated_at = ?
-		WHERE id = ?`, matchID, fileName, fileSize, millis(time.Now().UTC()), id)
+		WHERE id = ? AND group_id = ?`, matchID, fileName, fileSize, millis(time.Now().UTC()), id, groupID)
 	return err
 }
 
@@ -388,6 +389,7 @@ func scanMatch(row interface{ Scan(...any) error }) (Match, error) {
 func scanRofl(row interface{ Scan(...any) error }) (*RoflUpload, error) {
 	var (
 		r         RoflUpload
+		groupID   sql.NullInt64
 		matchID   sql.NullInt64
 		blueWin   sql.NullInt64
 		parsed    sql.NullString
@@ -395,13 +397,16 @@ func scanRofl(row interface{ Scan(...any) error }) (*RoflUpload, error) {
 		created   int64
 		updated   int64
 	)
-	err := row.Scan(&r.ID, &matchID, &r.FileName, &r.FileSize, &r.SHA256, &r.GameVersion,
+	err := row.Scan(&r.ID, &groupID, &matchID, &r.FileName, &r.FileSize, &r.SHA256, &r.GameVersion,
 		&r.DDragonVersion, &r.GameLengthMS, &blueWin, &parsed, &createdBy, &created, &updated)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("读取录像失败: %w", err)
+	}
+	if groupID.Valid {
+		r.GroupID = groupID.Int64
 	}
 	if matchID.Valid {
 		v := matchID.Int64

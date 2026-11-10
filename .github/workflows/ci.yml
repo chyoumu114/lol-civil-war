@@ -45,6 +45,19 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Static analysis (gosec)
+        run: |
+          go install github.com/securego/gosec/v2/cmd/gosec@latest
+          gosec -severity medium -confidence medium ./...
+
+      - name: Vulnerability scan (govulncheck)
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+
+      - name: npm audit (production deps)
+        run: npm audit --prefix web --omit=dev --audit-level=high
+
       - name: Test (MySQL integration)
         run: go test ./...
 

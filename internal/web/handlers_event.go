@@ -85,6 +85,7 @@ func (s *Server) handleEventEnd(w http.ResponseWriter, r *http.Request, group st
 		writeError(w, err)
 		return
 	}
+	auditLog("event_end", "eventId", event.ID, "memberId", member.ID)
 	writeJSON(w, http.StatusOK, detail)
 }
 

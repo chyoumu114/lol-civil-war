@@ -21,6 +21,19 @@ import (
 	"github.com/chyoumu114/lol-civil-war/internal/webui"
 )
 
+// contentSecurityPolicy 是纵深防御用的内容安全策略（M-05）。
+// 前端产物没有内联脚本；Ant Design Vue 会写 style 属性，因此样式允许 inline。
+const contentSecurityPolicy = "default-src 'self'; " +
+	"script-src 'self'; " +
+	"style-src 'self' 'unsafe-inline'; " +
+	"img-src 'self' data: https:; " +
+	"font-src 'self' data:; " +
+	"connect-src 'self'; " +
+	"object-src 'none'; " +
+	"base-uri 'none'; " +
+	"form-action 'self'; " +
+	"frame-ancestors 'self'"
+
 // Server 承载 HTTP 路由、会话与静态资源。
 type Server struct {
 	App     *service.App
@@ -29,18 +42,28 @@ type Server struct {
 
 	sessions *sessionManager
 	limiter  *limiter
+	// uploadSem 限制录像解析的全局并发，避免多个大文件同时放大内存/CPU（M-07）。
+	uploadSem chan struct{}
+	// matchSem 限制自动匹配的全局并发（L-11）。
+	matchSem chan struct{}
 	ui       fs.FS
 }
 
 // New 构造 HTTP 服务。
 func New(app *service.App, cfg *config.Config, version string) *Server {
+	uploadConcurrency := cfg.UploadConcurrency
+	if uploadConcurrency < 1 {
+		uploadConcurrency = 1
+	}
 	return &Server{
-		App:      app,
-		Cfg:      cfg,
-		Version:  version,
-		sessions: newSessionManager(app.St, cfg.SessionTTL, cfg.CookieSecure),
-		limiter:  newLimiter(),
-		ui:       webui.Dist(),
+		App:       app,
+		Cfg:       cfg,
+		Version:   version,
+		sessions:  newSessionManager(app.St, cfg.SessionTTL, cfg.SessionMaxTTL, cfg.CookieSecure),
+		limiter:   newLimiter(),
+		uploadSem: make(chan struct{}, uploadConcurrency),
+		matchSem:  make(chan struct{}, 2),
+		ui:        webui.Dist(),
 	}
 }
 
@@ -57,18 +80,20 @@ func (s *Server) Handler() http.Handler {
 	handler = s.withCSRF(handler)
 	handler = s.withSession(handler)
 	handler = s.withSecurityHeaders(handler)
+	handler = s.withIPLimit(1200, time.Minute)(handler)
 	handler = s.withLogging(handler)
 	handler = s.withRecover(handler)
 	return handler
 }
 
 func (s *Server) routes(mux *http.ServeMux) {
-	authLimit := s.limit(120, time.Minute, func(r *http.Request) string {
-		return "auth:" + clientIP(r, s.Cfg.TrustProxy)
-	})
-	resolveLimit := s.limit(60, time.Minute, func(r *http.Request) string {
-		return "resolve:" + clientIP(r, s.Cfg.TrustProxy)
-	})
+	ipKey := func(scope string) func(*http.Request) string {
+		return func(r *http.Request) string {
+			return scope + ":" + clientIP(r, s.Cfg.TrustedProxies)
+		}
+	}
+	authLimit := s.limit(120, time.Minute, ipKey("auth"))
+	resolveLimit := s.limit(120, time.Minute, ipKey("resolve"))
 
 	// 公共接口
 	mux.HandleFunc("GET /api/health", s.handleHealth)
@@ -156,6 +181,7 @@ func (s *Server) groupScoped(fn groupHandler) http.HandlerFunc {
 		allowed, retry := s.limiter.allow("user:"+itoa64(user.ID), 120, time.Minute)
 		if !allowed {
 			w.Header().Set("Retry-After", itoa(retry))
+			auditLog("rate_limited", "scope", "user", "userNo", user.UserNo, "path", r.URL.Path)
 			writeMessage(w, http.StatusTooManyRequests, "Too Many Attempts.")
 			return
 		}
@@ -239,9 +265,30 @@ func (s *Server) withLogging(next http.Handler) http.Handler {
 		next.ServeHTTP(recorder, r)
 		if !strings.HasPrefix(r.URL.Path, "/assets/") && !strings.HasPrefix(r.URL.Path, "/champions/") {
 			slog.Info("http", "method", r.Method, "path", r.URL.Path,
-				"status", recorder.status, "duration", time.Since(start).Round(time.Millisecond).String())
+				"status", recorder.status, "ip", clientIP(r, s.Cfg.TrustedProxies),
+				"duration", time.Since(start).Round(time.Millisecond).String())
 		}
 	})
+}
+
+// withIPLimit 对匿名可达的 API/认证入口做兜底的外层 IP 限流（H-02）。
+func (s *Server) withIPLimit(limit int, window time.Duration) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.HasPrefix(r.URL.Path, "/api/") && !strings.HasPrefix(r.URL.Path, "/auth/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+			ip := clientIP(r, s.Cfg.TrustedProxies)
+			if allowed, retry := s.limiter.allow("ip:"+ip, limit, window); !allowed {
+				w.Header().Set("Retry-After", itoa(retry))
+				auditLog("rate_limited", "scope", "ip", "ip", ip, "path", r.URL.Path)
+				writeMessage(w, http.StatusTooManyRequests, "Too Many Attempts.")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }
 
 func (s *Server) withSecurityHeaders(next http.Handler) http.Handler {
@@ -249,6 +296,12 @@ func (s *Server) withSecurityHeaders(next http.Handler) http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		w.Header().Set("Referrer-Policy", "same-origin")
+		w.Header().Set("Content-Security-Policy", contentSecurityPolicy)
+		w.Header().Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()")
+		// HSTS 只在站点确实走 HTTPS 时下发，避免内网 http 调试被浏览器强制升级。
+		if s.Cfg.CookieSecure {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
 		next.ServeHTTP(w, r)
 	})
 }
@@ -313,12 +366,13 @@ func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 	data, err := fs.ReadFile(s.ui, "index.html")
 	if err != nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte(placeholderHTML))
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(data)
 }
 
@@ -336,7 +390,7 @@ func (s *Server) serveChampionIcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	full := filepath.Join(s.Cfg.ChampionIconDir, name)
-	file, err := os.Open(full)
+	file, err := os.Open(full) // #nosec G304 -- name 已过 filepath.Base 与扩展名白名单
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -361,10 +415,12 @@ code{background:#0b1020;padding:2px 6px;border-radius:6px;color:#93c5fd}h1{font-
 <p>请执行 <code>make web</code>（或 <code>cd web &amp;&amp; npm ci &amp;&amp; npm run build</code>）后重新启动服务。</p>
 </main></body></html>`
 
+// healthPayload 只返回粗粒度状态；数据库错误细节写日志，不进入匿名响应体（L-02）。
 func (s *Server) healthPayload(ctx context.Context) (map[string]any, bool) {
 	database := "ok"
 	if err := s.App.St.Ping(ctx); err != nil {
-		database = "error: " + err.Error()
+		slog.Error("数据库健康检查失败", "error", err)
+		database = "error"
 	}
 	ok := database == "ok"
 	return map[string]any{

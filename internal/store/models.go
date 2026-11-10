@@ -172,9 +172,10 @@ type Rating struct {
 	UpdatedAt      time.Time
 }
 
-// RoflUpload 是录像解析结果（按 sha256 幂等）。
+// RoflUpload 是录像解析结果（按群 + sha256 幂等）。
 type RoflUpload struct {
 	ID                int64
+	GroupID           int64
 	MatchID           *int64
 	FileName          string
 	FileSize          int64
@@ -203,6 +204,8 @@ type Session struct {
 	QQPendingAvatar string
 	// 已登录用户发起“绑定 QQ”时的目标账号。
 	QQBindUserID *int64
-	ExpiresAt    time.Time
-	CreatedAt    time.Time
+	// ExpiresAt 是空闲超时；AbsoluteExpiresAt 是登录后的绝对寿命上限。
+	ExpiresAt         time.Time
+	AbsoluteExpiresAt time.Time
+	CreatedAt         time.Time
 }

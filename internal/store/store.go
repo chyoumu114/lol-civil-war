@@ -44,7 +44,13 @@ type execer interface {
 }
 
 // Open 连接 MySQL 并初始化表结构。启动阶段会重试，等待 MySQL 就绪。
-func Open(dsn string) (*Store, error) {
+func Open(dsn string) (*Store, error) { return open(dsn, true) }
+
+// OpenExisting 只连接数据库，不执行任何 DDL。
+// 生产运行时账号可用它启动（配合 LCW_MIGRATE_ON_START=false），迁移交给 `migrate` 子命令（L-09）。
+func OpenExisting(dsn string) (*Store, error) { return open(dsn, false) }
+
+func open(dsn string, migrate bool) (*Store, error) {
 	if strings.TrimSpace(dsn) == "" {
 		return nil, errors.New("数据库 DSN 不能为空")
 	}
@@ -74,13 +80,15 @@ func Open(dsn string) (*Store, error) {
 		return nil, fmt.Errorf("连接 MySQL 失败: %w", pingErr)
 	}
 
-	if err := initSchema(db); err != nil {
-		_ = db.Close()
-		return nil, err
-	}
-	if err := upgradeSchema(context.Background(), db); err != nil {
-		_ = db.Close()
-		return nil, err
+	if migrate {
+		if err := initSchema(db); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
+		if err := upgradeSchema(context.Background(), db); err != nil {
+			_ = db.Close()
+			return nil, err
+		}
 	}
 	return &Store{db: db}, nil
 }

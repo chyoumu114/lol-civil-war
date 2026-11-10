@@ -22,7 +22,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 		user, err := s.App.St.UserByID(r.Context(), userID)
 		if err == nil {
 			payload = s.meView(user)
-		} else if err != nil && !isStoreNotFound(err) {
+		} else if !isStoreNotFound(err) {
 			writeError(w, err)
 			return
 		}
@@ -93,7 +93,8 @@ func (s *Server) handleChampionLibrary(w http.ResponseWriter, r *http.Request) {
 	if rawPosition != "" && !strings.EqualFold(rawPosition, "ALL") {
 		parsed, ok := rank.ParsePosition(rawPosition)
 		if !ok {
-			writeMessage(w, http.StatusUnprocessableEntity, "未知位置："+rawPosition)
+			// 不回显用户输入（I-02）。
+			writeMessage(w, http.StatusUnprocessableEntity, "未知的位置类型")
 			return
 		}
 		position = &parsed
@@ -108,7 +109,13 @@ func (s *Server) handleChampionLibrary(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleChampionNames(w http.ResponseWriter, r *http.Request) {
-	view := s.App.DDragon.Names(r.Context(), r.URL.Query().Get("version"))
+	version := strings.TrimSpace(r.URL.Query().Get("version"))
+	// 只允许“配置版本 / latest / 已缓存版本”，阻止任意版本号放大出站请求（M-06）。
+	if !s.App.DDragon.Allowed(r.Context(), version) {
+		writeValidation(w, "version", "不支持的 DataDragon 版本")
+		return
+	}
+	view := s.App.DDragon.Names(r.Context(), version)
 	writeJSON(w, http.StatusOK, view)
 }
 

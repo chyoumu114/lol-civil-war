@@ -27,11 +27,13 @@ import (
 var version = "dev"
 
 func main() {
-	// 运维子命令：添加/移除/查看白名单群，不启动 HTTP 服务。
+	// 运维子命令：白名单管理与建表迁移，不启动 HTTP 服务。
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
 		case "group", "groups":
 			os.Exit(runGroupCLI(os.Args[2:]))
+		case "migrate":
+			os.Exit(runMigrate())
 		}
 	}
 
@@ -49,6 +51,9 @@ func main() {
 		slog.Error("加载配置失败", "error", err)
 		os.Exit(1)
 	}
+	for _, warning := range cfg.Warnings() {
+		slog.Warn(warning)
+	}
 	dataDir, err := cfg.EnsureDataDir()
 	if err != nil {
 		slog.Error("创建数据目录失败", "error", err)
@@ -58,7 +63,13 @@ func main() {
 		slog.Warn("未配置群白名单（LCW_ALLOWED_GROUPS），所有群都将被拒绝")
 	}
 
-	st, err := store.Open(cfg.DBDSN)
+	var st *store.Store
+	if cfg.MigrateOnStart {
+		st, err = store.Open(cfg.DBDSN)
+	} else {
+		// 运行时账号可以没有 DDL 权限：迁移由 `lol-civil-war migrate` 单独执行（L-09）。
+		st, err = store.OpenExisting(cfg.DBDSN)
+	}
 	if err != nil {
 		slog.Error("初始化数据库失败", "error", err)
 		os.Exit(1)
@@ -90,6 +101,9 @@ func main() {
 			"db", cfg.DBUser+"@"+cfg.DBHost+"/"+cfg.DBName,
 			"allowedGroups", len(cfg.AllowedGroups),
 			"devLogin", cfg.DevLogin,
+			"devMode", cfg.DevMode,
+			"trustedProxies", len(cfg.TrustedProxies),
+			"cookieSecure", cfg.CookieSecure,
 			"qqConfigured", cfg.QQConfigured(),
 		)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {

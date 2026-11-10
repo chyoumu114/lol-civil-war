@@ -80,6 +80,35 @@ func upgradeSchema(ctx context.Context, db *sql.DB) error {
 			return err
 		}
 	}
+
+	// sessions：空闲超时与绝对寿命分离（M-04）；存量会话按 30 天绝对寿命回填。
+	if err := ensureColumn(ctx, db, "sessions", "absolute_expires_at", "absolute_expires_at BIGINT NOT NULL DEFAULT 0"); err != nil {
+		return err
+	}
+	if _, err := db.ExecContext(ctx,
+		`UPDATE sessions SET absolute_expires_at = created_at + ? WHERE absolute_expires_at = 0`,
+		int64((30*24*time.Hour)/time.Millisecond)); err != nil {
+		return fmt.Errorf("回填会话绝对寿命失败: %w", err)
+	}
+
+	// rofl_uploads：录像去重改为按群隔离（L-01）。
+	if err := ensureColumn(ctx, db, "rofl_uploads", "group_id", "group_id BIGINT NULL"); err != nil {
+		return err
+	}
+	if _, err := db.ExecContext(ctx, `
+		UPDATE rofl_uploads r
+		JOIN matches m ON m.id = r.match_id
+		JOIN events e ON e.id = m.event_id
+		SET r.group_id = e.group_id
+		WHERE r.group_id IS NULL`); err != nil {
+		return fmt.Errorf("回填录像群归属失败: %w", err)
+	}
+	if err := dropIndexIfExists(ctx, db, "rofl_uploads", "uk_rofl_sha256"); err != nil {
+		return err
+	}
+	if err := ensureUniqueIndex(ctx, db, "rofl_uploads", "uk_rofl_group_sha256", "group_id, sha256"); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -111,6 +140,24 @@ func columnNullable(ctx context.Context, db *sql.DB, table, column string) (bool
 		return false, fmt.Errorf("检查列 %s.%s 失败: %w", table, column, err)
 	}
 	return nullable == "YES", nil
+}
+
+func dropIndexIfExists(ctx context.Context, db *sql.DB, table, index string) error {
+	var count int
+	err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?`,
+		table, index).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("检查索引 %s.%s 失败: %w", table, index, err)
+	}
+	if count == 0 {
+		return nil
+	}
+	if _, err := db.ExecContext(ctx, "ALTER TABLE `"+table+"` DROP INDEX `"+index+"`"); err != nil {
+		return fmt.Errorf("删除索引 %s.%s 失败: %w", table, index, err)
+	}
+	return nil
 }
 
 func ensureUniqueIndex(ctx context.Context, db *sql.DB, table, index, columns string) error {
@@ -154,7 +201,10 @@ func backfillUserNos(ctx context.Context, db *sql.DB) error {
 	for _, id := range ids {
 		var lastErr error
 		for attempt := 0; attempt < 20; attempt++ {
-			userNo := newUserNo()
+			userNo, genErr := newUserNo()
+			if genErr != nil {
+				return genErr
+			}
 			var exists int
 			if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users WHERE user_no = ?`, userNo).Scan(&exists); err != nil {
 				return fmt.Errorf("检查 user_no 冲突失败: %w", err)
@@ -191,14 +241,21 @@ func duplicateQQNumbers(ctx context.Context, db *sql.DB) (int, error) {
 	return count, nil
 }
 
-func newUserNo() string {
+// newUserNo 生成 U + 8 位随机数字；随机源失败时返回错误，绝不退化为时间戳（L-07）。
+func newUserNo() (string, error) {
 	const digits = "0123456789"
+	const maxAcceptable = 250 // 250 = 25 * 10，拒绝采样消除取模偏差
 	buf := make([]byte, 8)
-	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("U%d", time.Now().UnixNano()%100000000)
+	var b [1]byte
+	for i := 0; i < len(buf); {
+		if _, err := rand.Read(b[:]); err != nil {
+			return "", fmt.Errorf("crypto/rand 不可用: %w", err)
+		}
+		if int(b[0]) >= maxAcceptable {
+			continue
+		}
+		buf[i] = digits[int(b[0])%len(digits)]
+		i++
 	}
-	for i := range buf {
-		buf[i] = digits[int(buf[i])%len(digits)]
-	}
-	return "U" + string(buf)
+	return "U" + string(buf), nil
 }

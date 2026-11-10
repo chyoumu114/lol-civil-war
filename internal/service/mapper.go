@@ -9,17 +9,17 @@ import (
 	"github.com/chyoumu114/lol-civil-war/internal/store"
 )
 
-// maskQQ 页面展示脱敏：保留前段，隐藏最后三位。
+// maskQQ 页面展示脱敏：隐藏中段，只保留前 2 位与后 2 位（I-03）。
 func maskQQ(qq *string) *string {
 	if qq == nil || *qq == "" {
 		return nil
 	}
 	runes := []rune(*qq)
-	if len(runes) <= 3 {
+	if len(runes) < 7 {
 		v := "***"
 		return &v
 	}
-	v := string(runes[:len(runes)-3]) + "***"
+	v := string(runes[:2]) + "****" + string(runes[len(runes)-2:])
 	return &v
 }
 

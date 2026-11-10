@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"fmt"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -16,6 +18,12 @@ var (
 	qqNumberRe = regexp.MustCompile(`^\d{5,12}$`)
 	emailRe    = regexp.MustCompile(`^[^@\s]+@[^@\s]+\.[^@\s]+$`)
 	bcryptCost = 12
+
+	// 统一的登录失败文案：不区分“账号不存在 / 未设置密码 / 密码错误”（M-01）。
+	loginFailedMessage = "邮箱或密码不正确"
+
+	// dummyPasswordHash 用于账号不存在时也执行一次 bcrypt 比较，抹平时序差异（M-01）。
+	dummyPasswordHash = mustHashPassword("lcw-dummy-password-please-ignore")
 )
 
 // PendingQQ 是 QQ 快捷登录通过后、尚未完成邮箱注册的临时身份。
@@ -65,6 +73,8 @@ func (a *App) RegisterEmail(ctx context.Context, email, password string) (store.
 }
 
 // LoginEmail 邮箱 + 密码登录。
+//
+// 失败时统一文案并始终执行一次 bcrypt 比较，避免通过响应内容或耗时枚举账号。
 func (a *App) LoginEmail(ctx context.Context, email, password string) (store.User, error) {
 	email = strings.ToLower(strings.TrimSpace(email))
 	if email == "" || password == "" {
@@ -73,15 +83,17 @@ func (a *App) LoginEmail(ctx context.Context, email, password string) (store.Use
 	user, err := a.St.UserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
-			return store.User{}, NewError(401, "邮箱或密码不正确")
+			compareDummyPassword(password)
+			return store.User{}, NewError(401, loginFailedMessage)
 		}
 		return store.User{}, err
 	}
 	if user.PasswordHash == nil || *user.PasswordHash == "" {
-		return store.User{}, NewError(401, "该邮箱尚未设置密码")
+		compareDummyPassword(password)
+		return store.User{}, NewError(401, loginFailedMessage)
 	}
 	if bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(password)) != nil {
-		return store.User{}, NewError(401, "邮箱或密码不正确")
+		return store.User{}, NewError(401, loginFailedMessage)
 	}
 	return user, nil
 }
@@ -142,7 +154,7 @@ func (a *App) CompleteQQ(ctx context.Context, pending PendingQQ, email, password
 	existing, err := a.St.UserByEmail(ctx, email)
 	if err == nil {
 		if existing.PasswordHash == nil || bcrypt.CompareHashAndPassword([]byte(*existing.PasswordHash), []byte(password)) != nil {
-			return store.User{}, ErrInvalid("邮箱或密码不正确")
+			return store.User{}, ErrInvalid(loginFailedMessage)
 		}
 		if existing.QQOpenID != nil {
 			if *existing.QQOpenID == pending.OpenID {
@@ -275,7 +287,11 @@ func (a *App) DevLogin(ctx context.Context, qq, nickname string) (store.User, er
 // newUserNo 生成系统唯一用户编号：U + 8 位数字，冲突时重试。
 func (a *App) newUserNo(ctx context.Context) (string, error) {
 	for attempt := 0; attempt < 20; attempt++ {
-		userNo := "U" + randomDigits(8)
+		suffix, err := randomDigits(8)
+		if err != nil {
+			return "", err
+		}
+		userNo := "U" + suffix
 		if _, err := a.St.UserByNo(ctx, userNo); err == nil {
 			continue
 		} else if !errors.Is(err, store.ErrNotFound) {
@@ -297,9 +313,12 @@ func normalizeEmail(email string) (string, error) {
 	return email, nil
 }
 
+// minPasswordRunes 是密码最小长度（M-02：从 8 位提升到 10 位）。
+const minPasswordRunes = 10
+
 func validatePassword(password string) error {
-	if len([]rune(password)) < 8 {
-		return ErrInvalid("密码至少 8 位")
+	if len([]rune(password)) < minPasswordRunes {
+		return ErrInvalid("密码至少 10 位")
 	}
 	if len([]byte(password)) > 72 {
 		return ErrInvalid("密码最多 72 字节")
@@ -315,23 +334,61 @@ func optionalString(value string) *string {
 	return &value
 }
 
-func randomDigits(n int) string {
+// randomDigits 生成 n 位随机数字；crypto/rand 失败时返回错误（fail-closed，L-07）。
+func randomDigits(n int) (string, error) {
 	const digits = "0123456789"
+	const maxAcceptable = 250 // 250 = 25 * 10，拒绝 250-255 消除取模偏差
 	buf := make([]byte, n)
-	if _, err := rand.Read(buf); err != nil {
-		return strings.Repeat("0", n)
+	var b [1]byte
+	for i := 0; i < n; {
+		if _, err := rand.Read(b[:]); err != nil {
+			return "", fmt.Errorf("crypto/rand 不可用: %w", err)
+		}
+		if int(b[0]) >= maxAcceptable {
+			continue
+		}
+		buf[i] = digits[int(b[0])%len(digits)]
+		i++
 	}
-	for i := range buf {
-		buf[i] = digits[int(buf[i])%len(digits)]
-	}
-	return string(buf)
+	return string(buf), nil
 }
 
-// SafeRedirect 只允许站内相对路径，避免开放重定向。
+// mustHashPassword 生成哑哈希；失败直接 panic（启动阶段无法保证安全时应立即失败）。
+func mustHashPassword(password string) []byte {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcryptCost)
+	if err != nil {
+		panic("初始化 bcrypt 哑哈希失败: " + err.Error())
+	}
+	return hash
+}
+
+// compareDummyPassword 对不存在的账号也做一次等价耗时的比较。
+func compareDummyPassword(password string) {
+	_ = bcrypt.CompareHashAndPassword(dummyPasswordHash, []byte(password))
+}
+
+// SafeRedirect 只允许站内相对路径，避免开放重定向（L-03）。
+//
+// 拒绝：空串、非 / 开头、// 或 /\ 开头、含反斜杠/控制字符、以及任何带 scheme/host 的 URL。
 func SafeRedirect(path string) string {
 	path = strings.TrimSpace(path)
-	if path == "" || !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") {
+	if path == "" || path[0] != '/' {
 		return "/"
+	}
+	if len(path) > 1 && (path[1] == '/' || path[1] == '\\') {
+		return "/"
+	}
+	if strings.ContainsAny(path, "\\\r\n\t") {
+		return "/"
+	}
+	u, err := url.Parse(path)
+	if err != nil || u.Scheme != "" || u.Host != "" || u.IsAbs() {
+		return "/"
+	}
+	for _, segment := range strings.Split(u.Path, "/") {
+		if segment == "." || segment == ".." {
+			return "/"
+		}
 	}
 	return path
 }

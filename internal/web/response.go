@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 
 	"github.com/chyoumu114/lol-civil-war/internal/service"
@@ -74,22 +76,76 @@ func isUnsafeMethod(method string) bool {
 	}
 }
 
-// clientIP 取真实客户端 IP（信任反向代理时使用 X-Forwarded-For）。
-func clientIP(r *http.Request, trustProxy bool) string {
-	if trustProxy {
-		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
-			parts := strings.Split(forwarded, ",")
-			if ip := strings.TrimSpace(parts[0]); ip != "" {
-				return ip
+// clientIP 取真实客户端 IP。
+//
+// 安全约定（对应 H-01）：
+//   - 默认只相信 TCP 对端地址；
+//   - 仅当对端命中可信代理网段时，才解析 X-Forwarded-For；
+//   - X-Forwarded-For 必须从右向左取第一个“不可信”地址，
+//     左侧可以任意伪造，不能直接取最左值。
+func clientIP(r *http.Request, trusted []netip.Prefix) string {
+	remote := hostFromAddrPort(r.RemoteAddr)
+	remoteAddr, ok := parseIP(remote)
+	if !ok || !isTrustedProxy(remoteAddr, trusted) {
+		return remote
+	}
+
+	if ip := forwardedClientIP(trusted, r.Header.Values("X-Forwarded-For")); ip != "" {
+		return ip
+	}
+	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
+		if addr, ok := parseIP(strings.Trim(ip, "[]")); ok {
+			return addr.String()
+		}
+	}
+	return remote
+}
+
+// hostFromAddrPort 从 "ip:port" 中取出 IP；格式异常时原样返回并去掉方括号。
+func hostFromAddrPort(addrPort string) string {
+	if host, _, err := net.SplitHostPort(strings.TrimSpace(addrPort)); err == nil {
+		return host
+	}
+	return strings.Trim(strings.TrimSpace(addrPort), "[]")
+}
+
+// forwardedClientIP 从右向左遍历 X-Forwarded-For，返回第一个不可信地址。
+// 整条链只要出现无法解析的地址就直接放弃（返回空），避免把可疑值当作客户端地址。
+func forwardedClientIP(trusted []netip.Prefix, values []string) string {
+	items := make([]string, 0, len(values))
+	for _, value := range values {
+		for _, part := range strings.Split(value, ",") {
+			if item := strings.TrimSpace(part); item != "" {
+				items = append(items, item)
 			}
 		}
-		if realIP := strings.TrimSpace(r.Header.Get("X-Real-IP")); realIP != "" {
-			return realIP
+	}
+	for i := len(items) - 1; i >= 0; i-- {
+		addr, ok := parseIP(strings.Trim(items[i], "[]"))
+		if !ok {
+			return ""
+		}
+		if isTrustedProxy(addr, trusted) {
+			continue
+		}
+		return addr.String()
+	}
+	return ""
+}
+
+func parseIP(raw string) (netip.Addr, bool) {
+	addr, err := netip.ParseAddr(strings.TrimSpace(raw))
+	if err != nil {
+		return netip.Addr{}, false
+	}
+	return addr.Unmap(), true
+}
+
+func isTrustedProxy(addr netip.Addr, trusted []netip.Prefix) bool {
+	for _, prefix := range trusted {
+		if prefix.Contains(addr) {
+			return true
 		}
 	}
-	host := r.RemoteAddr
-	if index := strings.LastIndex(host, ":"); index > 0 {
-		host = host[:index]
-	}
-	return host
+	return false
 }

@@ -37,6 +37,7 @@ type Parser struct{}
 
 // ParseFile 读取并解析录像文件。
 func (Parser) ParseFile(path string) (Metadata, error) {
+	// #nosec G304 -- path 是本服务自己创建的临时文件
 	f, err := os.Open(path)
 	if err != nil {
 		return Metadata{}, parseErr("文件不存在或不可读")

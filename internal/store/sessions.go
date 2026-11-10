@@ -16,16 +16,17 @@ func (s *Store) GetSession(ctx context.Context, id string) (Session, error) {
 		pendingUser sql.NullInt64
 		bindUser    sql.NullInt64
 		expires     int64
+		absolute    int64
 		created     int64
 	)
 	err := s.conn().QueryRowContext(ctx, `
 		SELECT id, user_id, csrf, oauth_state, oauth_redirect,
 		       qq_pending_openid, qq_pending_user_id, qq_pending_name, qq_pending_avatar,
-		       qq_bind_user_id, expires_at, created_at
+		       qq_bind_user_id, expires_at, absolute_expires_at, created_at
 		FROM sessions WHERE id = ?`, id).
 		Scan(&sess.ID, &userID, &sess.CSRF, &sess.OAuthState, &sess.OAuthRedirect,
 			&sess.QQPendingOpenID, &pendingUser, &sess.QQPendingName, &sess.QQPendingAvatar,
-			&bindUser, &expires, &created)
+			&bindUser, &expires, &absolute, &created)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Session{}, ErrNotFound
 	}
@@ -45,6 +46,9 @@ func (s *Store) GetSession(ctx context.Context, id string) (Session, error) {
 		sess.QQBindUserID = &v
 	}
 	sess.ExpiresAt = fromMillis(expires)
+	if absolute > 0 {
+		sess.AbsoluteExpiresAt = fromMillis(absolute)
+	}
 	sess.CreatedAt = fromMillis(created)
 	return sess, nil
 }
@@ -65,11 +69,16 @@ func (s *Store) PutSession(ctx context.Context, sess Session) error {
 	if sess.CreatedAt.IsZero() {
 		created = millis(time.Now().UTC())
 	}
+	// 零值时间不能直接 millis（会变成负数），写 0 表示“无绝对上限”。
+	absolute := int64(0)
+	if !sess.AbsoluteExpiresAt.IsZero() {
+		absolute = millis(sess.AbsoluteExpiresAt)
+	}
 	_, err := s.conn().ExecContext(ctx, `
 		INSERT INTO sessions (id, user_id, csrf, oauth_state, oauth_redirect,
 			qq_pending_openid, qq_pending_user_id, qq_pending_name, qq_pending_avatar,
-			qq_bind_user_id, expires_at, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AS new
+			qq_bind_user_id, expires_at, absolute_expires_at, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) AS new
 		ON DUPLICATE KEY UPDATE
 			user_id = new.user_id,
 			csrf = new.csrf,
@@ -80,10 +89,11 @@ func (s *Store) PutSession(ctx context.Context, sess Session) error {
 			qq_pending_name = new.qq_pending_name,
 			qq_pending_avatar = new.qq_pending_avatar,
 			qq_bind_user_id = new.qq_bind_user_id,
-			expires_at = new.expires_at`,
+			expires_at = new.expires_at,
+			absolute_expires_at = new.absolute_expires_at`,
 		sess.ID, userID, sess.CSRF, sess.OAuthState, sess.OAuthRedirect,
 		sess.QQPendingOpenID, pendingUser, sess.QQPendingName, sess.QQPendingAvatar,
-		bindUser, millis(sess.ExpiresAt), created)
+		bindUser, millis(sess.ExpiresAt), absolute, created)
 	if err != nil {
 		return fmt.Errorf("保存会话失败: %w", err)
 	}
@@ -98,6 +108,6 @@ func (s *Store) DeleteSession(ctx context.Context, id string) error {
 
 // DeleteExpiredSessions 清理过期会话（顺带避免表无限增长）。
 func (s *Store) DeleteExpiredSessions(ctx context.Context, now time.Time) error {
-	_, err := s.conn().ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ?`, millis(now))
+	_, err := s.conn().ExecContext(ctx, `DELETE FROM sessions WHERE expires_at < ? OR (absolute_expires_at > 0 AND absolute_expires_at < ?)`, millis(now), millis(now))
 	return err
 }

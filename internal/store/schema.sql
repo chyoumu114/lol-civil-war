@@ -196,6 +196,7 @@ CREATE TABLE IF NOT EXISTS match_player_ratings (
 
 CREATE TABLE IF NOT EXISTS rofl_uploads (
     id                   BIGINT NOT NULL AUTO_INCREMENT,
+    group_id             BIGINT DEFAULT NULL,
     match_id             BIGINT DEFAULT NULL,
     file_name            VARCHAR(255) NOT NULL,
     file_size            BIGINT UNSIGNED NOT NULL DEFAULT 0,
@@ -209,7 +210,8 @@ CREATE TABLE IF NOT EXISTS rofl_uploads (
     created_at           BIGINT NOT NULL,
     updated_at           BIGINT NOT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY uk_rofl_sha256 (sha256),
+    UNIQUE KEY uk_rofl_group_sha256 (group_id, sha256),
+    KEY idx_rofl_group (group_id),
     CONSTRAINT fk_rofl_match FOREIGN KEY (match_id) REFERENCES matches (id) ON DELETE SET NULL,
     CONSTRAINT fk_rofl_creator FOREIGN KEY (created_by_member_id) REFERENCES group_members (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -226,6 +228,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     qq_pending_avatar  VARCHAR(255) NOT NULL DEFAULT '',
     qq_bind_user_id    BIGINT DEFAULT NULL,
     expires_at         BIGINT NOT NULL,
+    absolute_expires_at BIGINT NOT NULL DEFAULT 0,
     created_at         BIGINT NOT NULL,
     PRIMARY KEY (id),
     KEY idx_sessions_expires (expires_at)

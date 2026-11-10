@@ -227,11 +227,11 @@ func copyTable(ctx context.Context, tx *sql.Tx, src *sql.DB, spec tableSpec, loc
 		quoted[i] = "`" + col + "`"
 		placeholders[i] = "?"
 	}
-	selectSQL := fmt.Sprintf("SELECT %s FROM `%s`", strings.Join(quoteAll(selectCols), ", "), spec.source)
+	selectSQL := fmt.Sprintf("SELECT %s FROM `%s`", strings.Join(quoteAll(selectCols), ", "), spec.source) // #nosec G201 -- 表名/列名来自固定迁移清单，非用户输入
 	if sourceSet["id"] {
 		selectSQL += " ORDER BY `id`"
 	}
-	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)",
+	insertSQL := fmt.Sprintf("INSERT INTO `%s` (%s) VALUES (%s)", // #nosec G201 -- 表名/列名来自固定迁移清单，值全部走占位符
 		spec.target, strings.Join(quoted, ", "), strings.Join(placeholders, ", "))
 
 	rows, err := src.QueryContext(ctx, selectSQL)

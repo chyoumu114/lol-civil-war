@@ -1,6 +1,7 @@
 package roster
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -14,6 +15,7 @@ type Matcher struct {
 	maxPlans int
 	budget   int
 
+	ctx        context.Context
 	best       []Plan
 	used       map[int64]bool
 	seen       map[string]bool
@@ -39,8 +41,14 @@ func NewMatcher(calc *rank.PowerCalculator, maxPlans, budget int) *Matcher {
 	return &Matcher{calc: calc, maxPlans: maxPlans, budget: budget}
 }
 
-// Match 执行匹配。候选不足或某位置不足 2 人时返回 *Error。
+// Match 执行匹配（不可取消版本，保留给纯计算调用方）。
 func (m *Matcher) Match(candidates []Candidate) (Result, error) {
+	return m.MatchContext(context.Background(), candidates)
+}
+
+// MatchContext 执行匹配；ctx 取消/超时后停止搜索并返回当前最优方案。
+func (m *Matcher) MatchContext(ctx context.Context, candidates []Candidate) (Result, error) {
+	m.ctx = ctx
 	m.byPosition = m.buildCandidatesByPosition(candidates)
 
 	positionCounts := make(map[string]int, len(rank.Positions))
@@ -129,6 +137,15 @@ func (m *Matcher) dfs(index, team1Power, team2Power int) {
 	if m.nodes > m.budget {
 		m.exhausted = true
 		return
+	}
+	// 每 256 个节点检查一次取消信号，避免长时间占用 CPU（L-11）。
+	if m.nodes&0xFF == 0 && m.ctx != nil {
+		select {
+		case <-m.ctx.Done():
+			m.exhausted = true
+			return
+		default:
+		}
 	}
 	if index == len(rank.Positions) {
 		m.record(team1Power, team2Power)

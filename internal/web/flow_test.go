@@ -60,20 +60,23 @@ func newTestServer(t *testing.T) (*httptest.Server, *store.Store) {
 
 	dir := t.TempDir()
 	cfg := &config.Config{
-		Addr:            "127.0.0.1:0",
-		DataDir:         dir,
-		DBDSN:           dsn,
-		BaseURL:         "http://example.test",
-		TimeZone:        "Asia/Shanghai",
-		AllowedGroups:   []string{testGroup},
-		DevLogin:        true,
-		SessionTTL:      time.Hour,
-		TrustProxy:      false,
-		ChampionIconDir: filepath.Join(dir, "champions"),
-		RosterMaxPlans:  5,
-		RosterBudget:    200000,
-		DivisionStep:    100,
-		RoflMaxKB:       1024,
+		Addr:              "127.0.0.1:0",
+		DataDir:           dir,
+		DBDSN:             dsn,
+		BaseURL:           "http://example.test",
+		TimeZone:          "Asia/Shanghai",
+		AllowedGroups:     []string{testGroup},
+		DevLogin:          true,
+		SessionTTL:        time.Hour,
+		SessionMaxTTL:     24 * time.Hour,
+		UploadConcurrency: 1,
+		DevMode:           true,
+		TrustProxy:        false,
+		ChampionIconDir:   filepath.Join(dir, "champions"),
+		RosterMaxPlans:    5,
+		RosterBudget:      200000,
+		DivisionStep:      100,
+		RoflMaxKB:         1024,
 	}
 	st, err := store.Open(dsn)
 	if err != nil {
@@ -234,8 +237,14 @@ func TestCivilWarFlow(t *testing.T) {
 		t.Fatalf("入口引导 resolve 失败: %v", resolved)
 	}
 
-	// 白名单外拒绝
-	whitelist := anon.do("POST", "/api/groups/resolve", map[string]any{"groupNumber": "999999999"}, http.StatusForbidden)
+	// CSRF Token 不允许走 query（L-04）：带 _token 但没有请求头仍应 419
+	if status, body := bootstrap.raw("POST", "/api/groups/resolve?_token="+bootstrap.csrf(),
+		map[string]any{"groupNumber": testGroup}, false); status != 419 {
+		t.Fatalf("query 里的 CSRF token 应被拒绝，实际 %d: %s", status, body)
+	}
+
+	// 白名单外拒绝：统一用中性 404，不暴露“是否在白名单”的差异（L-06）
+	whitelist := anon.do("POST", "/api/groups/resolve", map[string]any{"groupNumber": "999999999"}, http.StatusNotFound)
 	if whitelist["message"] == nil {
 		t.Fatalf("白名单外响应异常: %v", whitelist)
 	}
@@ -453,8 +462,36 @@ func TestDatabaseWhitelist(t *testing.T) {
 		t.Fatalf("移除白名单失败: removed=%v err=%v", removed, err)
 	}
 	status, body := client.raw("POST", "/api/groups/resolve", map[string]any{"groupNumber": number}, true)
-	if status != http.StatusForbidden {
-		t.Fatalf("移除白名单后应返回 403，实际 %d: %s", status, body)
+	if status != http.StatusNotFound {
+		t.Fatalf("移除白名单后应返回 404，实际 %d: %s", status, body)
+	}
+}
+
+// TestMetaDoesNotCreateSession 验证入口请求不再写库创建会话（H-02）。
+func TestMetaDoesNotCreateSession(t *testing.T) {
+	ts, _ := newTestServer(t)
+	resp, err := http.Get(ts.URL + "/api/meta")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("meta 状态 = %d", resp.StatusCode)
+	}
+	hasCSRF, hasSession := false, false
+	for _, header := range resp.Header.Values("Set-Cookie") {
+		switch {
+		case strings.HasPrefix(header, csrfCookieName+"="):
+			hasCSRF = true
+		case strings.HasPrefix(header, sessionCookieName+"="), strings.HasPrefix(header, secureSessionCookieName+"="):
+			hasSession = true
+		}
+	}
+	if hasSession {
+		t.Fatal("/api/meta 不应创建会话 Cookie")
+	}
+	if !hasCSRF {
+		t.Fatal("/api/meta 应下发无状态的 XSRF-TOKEN Cookie")
 	}
 }
 
@@ -475,21 +512,32 @@ func sessionCookie(t *testing.T, client *apiClient) string {
 }
 
 // setPendingQQ 直接给测试会话写入待补全的 QQ 身份（模拟 QQ 回调后的状态）。
+// H-02 之后 /api/meta 不再创建会话，因此这里直接在数据库建会话并注入 Cookie。
 func setPendingQQ(t *testing.T, st *store.Store, client *apiClient, openid, name string, userID *int64) {
 	t.Helper()
-	client.do("GET", "/api/meta", nil, http.StatusOK)
-	id := sessionCookie(t, client)
-	sess, err := st.GetSession(context.Background(), id)
-	if err != nil {
-		t.Fatalf("读取会话失败: %v", err)
+	now := time.Now().UTC()
+	sess := store.Session{
+		ID:                "test-session-" + openid,
+		CSRF:              "test-csrf-" + openid,
+		ExpiresAt:         now.Add(time.Hour),
+		AbsoluteExpiresAt: now.Add(24 * time.Hour),
+		CreatedAt:         now,
+		QQPendingOpenID:   openid,
+		QQPendingName:     name,
+		QQPendingAvatar:   "",
+		QQPendingUserID:   userID,
 	}
-	sess.QQPendingOpenID = openid
-	sess.QQPendingName = name
-	sess.QQPendingAvatar = ""
-	sess.QQPendingUserID = userID
 	if err := st.PutSession(context.Background(), sess); err != nil {
 		t.Fatalf("写入会话失败: %v", err)
 	}
+	parsed, err := url.Parse(client.base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.http.Jar.SetCookies(parsed, []*http.Cookie{
+		{Name: sessionCookieName, Value: sess.ID, Path: "/"},
+		{Name: csrfCookieName, Value: sess.CSRF, Path: "/"},
+	})
 }
 
 func TestEmailAuth(t *testing.T) {

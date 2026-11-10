@@ -54,7 +54,7 @@ func (a *App) AutoMatch(ctx context.Context, event store.Event, actor store.Memb
 	}
 
 	matcher := roster.NewMatcher(a.Calc, a.Cfg.RosterMaxPlans, a.Cfg.RosterBudget)
-	result, err := matcher.Match(candidates)
+	result, err := matcher.MatchContext(ctx, candidates)
 	if err != nil {
 		var rosterErr *roster.Error
 		if ok := asRosterError(err, &rosterErr); ok {

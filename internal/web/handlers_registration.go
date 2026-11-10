@@ -1,11 +1,16 @@
 package web
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/chyoumu114/lol-civil-war/internal/service"
 	"github.com/chyoumu114/lol-civil-war/internal/store"
 )
+
+// autoMatchTimeout 限制单次自动匹配的最长 CPU 时间（L-11）。
+const autoMatchTimeout = 15 * time.Second
 
 func (s *Server) handleRegistrationSave(w http.ResponseWriter, r *http.Request, group store.Group, event store.Event, member store.Member) {
 	var payload service.RegistrationPayload
@@ -98,8 +103,19 @@ func (s *Server) writeEventDetail(w http.ResponseWriter, r *http.Request, event 
 	writeJSON(w, http.StatusOK, detail)
 }
 
+// handleAutoMatch 自动匹配：全局并发配额 + 超时中断，超时返回当前最优方案。
 func (s *Server) handleAutoMatch(w http.ResponseWriter, r *http.Request, group store.Group, event store.Event, member store.Member) {
-	result, err := s.App.AutoMatch(r.Context(), event, member)
+	select {
+	case s.matchSem <- struct{}{}:
+		defer func() { <-s.matchSem }()
+	default:
+		w.Header().Set("Retry-After", "5")
+		writeMessage(w, http.StatusTooManyRequests, "正在为其他组织计算阵容，请稍后重试")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), autoMatchTimeout)
+	defer cancel()
+	result, err := s.App.AutoMatch(ctx, event, member)
 	if err != nil {
 		writeError(w, err)
 		return

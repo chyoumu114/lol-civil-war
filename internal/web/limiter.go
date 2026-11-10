@@ -7,6 +7,7 @@ import (
 )
 
 // limiter 是进程内固定窗口限流器（单实例部署足够）。
+// 说明：所有桶都是进程内状态，重启即清空；多副本部署需改用共享存储。
 type limiter struct {
 	mu       sync.Mutex
 	buckets  map[string]*bucket
@@ -27,16 +28,7 @@ func (l *limiter) allow(key string, limit int, window time.Duration) (bool, int)
 	now := time.Now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-
-	// 顺带清理长时间不用的 key，避免内存无限增长。
-	if now.Sub(l.lastSwap) > 10*time.Minute {
-		for k, b := range l.buckets {
-			if now.Sub(b.start) > window {
-				delete(l.buckets, k)
-			}
-		}
-		l.lastSwap = now
-	}
+	l.pruneLocked(now, window)
 
 	b, ok := l.buckets[key]
 	if !ok || now.Sub(b.start) >= window {
@@ -44,14 +36,71 @@ func (l *limiter) allow(key string, limit int, window time.Duration) (bool, int)
 		return true, 0
 	}
 	if b.count >= limit {
-		retry := int(window.Seconds() - now.Sub(b.start).Seconds())
-		if retry < 1 {
-			retry = 1
-		}
-		return false, retry
+		return false, retrySeconds(now, b.start, window)
 	}
 	b.count++
 	return true, 0
+}
+
+// blocked 只检查 key 是否已达上限，不增加计数。
+// 用于“失败才计数”的账号级退避（M-01/M-02）：成功登录不应该消耗额度。
+func (l *limiter) blocked(key string, limit int, window time.Duration) (bool, int) {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.pruneLocked(now, window)
+
+	b, ok := l.buckets[key]
+	if !ok || now.Sub(b.start) >= window {
+		return false, 0
+	}
+	if b.count >= limit {
+		return true, retrySeconds(now, b.start, window)
+	}
+	return false, 0
+}
+
+// hit 记录一次失败（窗口内累加）。
+func (l *limiter) hit(key string, window time.Duration) {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.pruneLocked(now, window)
+
+	b, ok := l.buckets[key]
+	if !ok || now.Sub(b.start) >= window {
+		l.buckets[key] = &bucket{start: now, count: 1}
+		return
+	}
+	b.count++
+}
+
+// clear 清空某个 key（例如登录成功后解除账号退避）。
+func (l *limiter) clear(key string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.buckets, key)
+}
+
+// pruneLocked 顺带清理长时间不用的 key，避免内存无限增长。
+func (l *limiter) pruneLocked(now time.Time, window time.Duration) {
+	if now.Sub(l.lastSwap) <= 10*time.Minute {
+		return
+	}
+	for k, b := range l.buckets {
+		if now.Sub(b.start) > window {
+			delete(l.buckets, k)
+		}
+	}
+	l.lastSwap = now
+}
+
+func retrySeconds(now, start time.Time, window time.Duration) int {
+	retry := int(window.Seconds() - now.Sub(start).Seconds())
+	if retry < 1 {
+		retry = 1
+	}
+	return retry
 }
 
 // limit 返回一个限流中间件。
@@ -61,6 +110,8 @@ func (s *Server) limit(limit int, window time.Duration, key func(*http.Request) 
 			allow, retry := s.limiter.allow(key(r), limit, window)
 			if !allow {
 				w.Header().Set("Retry-After", itoa(retry))
+				auditLog("rate_limited", "ip", clientIP(r, s.Cfg.TrustedProxies),
+					"path", r.URL.Path, "retryAfter", retry)
 				writeMessage(w, http.StatusTooManyRequests, "Too Many Attempts.")
 				return
 			}

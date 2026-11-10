@@ -42,7 +42,15 @@ curl -fsS http://127.0.0.1:18020/api/health
 | `LCW_ALLOWED_GROUPS` | `123456789,987654321` | 群白名单，逗号分隔 |
 | `LCW_BASE_URL` | `https://lol.example.com` | 对外地址 |
 | `LCW_QQ_APP_ID` / `LCW_QQ_APP_KEY` | — | QQ 互联凭据 |
-| `LCW_DEV_LOGIN` | `false` | 生产必须关闭 |
+| `LCW_DEV_LOGIN` | `false` | 生产必须关闭；生产形态开启会拒绝启动 |
+| `LCW_DEV_MODE` | `false` | 仅本地/内网调试可设 true（放宽空口令校验） |
+| `LCW_TRUST_PROXY` | `false` | 兼容开关：true 且未配可信网段时只信任本机回环 |
+| `LCW_TRUSTED_PROXIES` | `127.0.0.1/32,172.16.0.0/12` | 可信反向代理 CIDR；不配置则不解析 XFF |
+| `LCW_SESSION_TTL_HOURS` | `168` | 会话空闲有效期 |
+| `LCW_SESSION_MAX_HOURS` | `720` | 会话绝对寿命（到期必须重新登录） |
+| `LCW_ROFL_MAX_KB` | `65536` | 录像上传上限 |
+| `LCW_UPLOAD_CONCURRENCY` | `2` | 录像解析全局并发 |
+| `LCW_MIGRATE_ON_START` | `true` | 生产建议 false，改用 `migrate` 子命令 |
 | `LCW_BIND` | `127.0.0.1:18020` | 只监听本机，交给反向代理 |
 | `MYSQL_DATABASE` | `lol_civil_war` | 数据库名 |
 | `MYSQL_USER` / `MYSQL_PASSWORD` | `lcw` / 随机强口令 | 应用账号 |
@@ -97,6 +105,10 @@ certbot --nginx -d lol.example.com
 ```
 
 > `LCW_BASE_URL` 必须与浏览器地址一致（协议 + 域名），否则 QQ 回调和 Secure Cookie 会异常。
+>
+> 应用默认不信任 `X-Forwarded-For`。经反向代理部署时，把代理来源加入
+> `LCW_TRUSTED_PROXIES`（例如 `127.0.0.1/32,172.16.0.0/12`），
+> 否则限流与审计只能看到代理地址。
 
 ## 4. QQ 互联配置（可选）
 
@@ -132,6 +144,21 @@ docker compose exec app /app/lol-civil-war group remove 123456789
 ```
 
 > 与旧版不同：新群不需要改 `.env`、不需要重启。若某群还在 `LCW_ALLOWED_GROUPS` 中，`group remove` 后它仍会被环境变量放行。
+>
+> `group add` 会同时创建群记录并打印访问用的 `key`；解析接口不再自动建群。
+> 群不可用时统一返回 404，不再区分“未在白名单”和“尚未建档”。
+
+### 数据库结构升级
+
+默认启动时自动建表/升级。若运行时账号没有 DDL 权限，先执行迁移，再以
+`LCW_MIGRATE_ON_START=false` 启动：
+
+```bash
+# 新版本首次升级：用有 DDL 权限的账号执行一次
+docker compose exec app /app/lol-civil-war migrate
+```
+
+迁移内容：会话绝对寿命、录像按群去重（`group_id` + `(group_id, sha256)` 唯一键）。
 
 ## 6. 从旧版导入数据
 
@@ -146,7 +173,9 @@ go run ./tools/legacy-import \
 
 - `-truncate` 会清空目标库业务表，执行前务必确认/备份；
 - 旧库的 `sessions`、`cache`、`jobs` 不会导入；
-- 导入完成后启动应用即可看到旧的组织、报名、对局、录像与评分。
+- 导入完成后启动应用即可看到旧的组织、报名、对局、录像与评分；
+- 若设置了 `LCW_MIGRATE_ON_START=false`，请在导入后执行一次 `lol-civil-war migrate`，
+  把录像的 `group_id` 按对局回填到新结构。
 
 ## 7. 构建与发布镜像（ACR）
 
@@ -229,8 +258,10 @@ MySQL 版本固定在 `.env` 的 `MYSQL_IMAGE`，升级数据库大版本前先�
 
 ## 11. 安全清单
 
-- [ ] `LCW_DEV_LOGIN=false`
-- [ ] 使用 HTTPS，`LCW_COOKIE_SECURE=auto` 或 `true`
+- [ ] `LCW_DEV_LOGIN=false`、`LCW_DEV_MODE=false`
+- [ ] 使用 HTTPS，`LCW_COOKIE_SECURE=auto` 或 `true`（HTTPS 下会话 Cookie 为 `__Host-lcw_session`）
+- [ ] 配置 `LCW_TRUSTED_PROXIES`，且只包含真实代理网段
+- [ ] 生产设置 `LCW_MIGRATE_ON_START=false`，运行时数据库账号只给 DML 权限
 - [ ] `LCW_BIND=127.0.0.1:18020`，不要直接暴露到公网
 - [ ] MySQL 不发布宿主端口（Compose 默认如此）
 - [ ] `MYSQL_PASSWORD` / `MYSQL_ROOT_PASSWORD` 使用随机强口令
@@ -238,3 +269,4 @@ MySQL 版本固定在 `.env` 的 `MYSQL_IMAGE`，升级数据库大版本前先�
 - [ ] `.env` 不提交、不共享；QQ AppKey 与数据库备份妥善保管
 - [ ] 定期备份数据库卷
 - [ ] 限制服务器 SSH 来源与权限
+- [ ] 查看 [安全加固记录](security.md) 的“残留风险”一节

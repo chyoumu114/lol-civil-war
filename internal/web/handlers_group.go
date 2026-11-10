@@ -1,6 +1,7 @@
 package web
 
 import (
+	"errors"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -32,6 +33,11 @@ func (s *Server) handleGroupResolve(w http.ResponseWriter, r *http.Request) {
 
 	group, err := s.App.ResolveGroupByNumber(r.Context(), number)
 	if err != nil {
+		var bizErr *service.Error
+		if errors.As(err, &bizErr) && bizErr.Status == http.StatusNotFound {
+			// 审计白名单探测；响应本身对“未开通/不存在”保持中性。
+			auditLog("group_resolve_denied", "ip", clientIP(r, s.Cfg.TrustedProxies))
+		}
 		writeError(w, err)
 		return
 	}

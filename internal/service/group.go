@@ -12,6 +12,10 @@ import (
 
 var groupNumberRe = regexp.MustCompile(`^\d{5,12}$`)
 
+// 统一的“群不可用”文案：不区分“未配置白名单”与“白名单但尚未建档”，
+// 避免通过 403/404 差异枚举白名单（L-06）。
+const groupUnavailableMessage = "该群暂未开通内战工具，请联系管理员"
+
 // ProfilePayload 是资料保存请求。
 type ProfilePayload struct {
 	Nickname  string    `json:"nickname"`
@@ -28,56 +32,75 @@ type RankInput struct {
 	LP       int    `json:"lp"`
 }
 
-// ResolveGroup 解析 URL 中的群标识：优先公开 key，兼容旧数字群号。
+// ResolveGroup 解析 URL 中的群标识：只接受随机公开 key（I-03 关闭数字群号直达）。
 func (a *App) ResolveGroup(ctx context.Context, identifier string) (store.Group, error) {
-	group, err := a.St.GroupByPublicKey(ctx, identifier)
-	if err == nil {
-		allowed, allowErr := a.groupAllowed(ctx, group.QQGroupNumber)
-		if allowErr != nil {
-			return store.Group{}, allowErr
-		}
-		if !allowed {
-			return store.Group{}, a.groupNotAllowed(group.QQGroupNumber)
-		}
-		return group, nil
+	identifier = strings.TrimSpace(identifier)
+	if identifier == "" || groupNumberRe.MatchString(identifier) {
+		return store.Group{}, a.groupNotAllowed()
 	}
-	if !IsNotFound(err) {
+	group, err := a.St.GroupByPublicKey(ctx, identifier)
+	if err != nil {
+		if IsNotFound(err) {
+			return store.Group{}, a.groupNotAllowed()
+		}
 		return store.Group{}, err
 	}
-	if !groupNumberRe.MatchString(identifier) {
-		return store.Group{}, a.groupNotAllowed(identifier)
+	allowed, allowErr := a.groupAllowed(ctx, group.QQGroupNumber)
+	if allowErr != nil {
+		return store.Group{}, allowErr
 	}
-	return a.ResolveGroupByNumber(ctx, identifier)
+	if !allowed {
+		return store.Group{}, a.groupNotAllowed()
+	}
+	return group, nil
 }
 
-// ResolveGroupByNumber 用群号换取群（白名单校验，不存在则创建）。
+// ResolveGroupByNumber 用群号换取群。
+//
+// 只读取已存在的群记录：数据库白名单的建档由 `group add` 完成，
+// 解析路径不再插入新行（L-06）。仅环境变量白名单（静态、数量有限）允许首访自动建档，
+// 保证“只改 .env 就能用”的部署方式仍然成立。
 func (a *App) ResolveGroupByNumber(ctx context.Context, number string) (store.Group, error) {
 	allowed, err := a.groupAllowed(ctx, number)
 	if err != nil {
 		return store.Group{}, err
 	}
 	if !allowed {
-		return store.Group{}, a.groupNotAllowed(number)
+		return store.Group{}, a.groupNotAllowed()
 	}
-	group, err := a.St.EnsureGroup(ctx, number, randomKey(32))
-	if err != nil {
+	group, err := a.St.GroupByNumber(ctx, number)
+	if err == nil {
+		return group, nil
+	}
+	if !IsNotFound(err) {
 		return store.Group{}, err
 	}
-	return group, nil
+	if !a.envGroupAllowed(number) {
+		return store.Group{}, a.groupNotAllowed()
+	}
+	// crypto/rand.Text 在随机源不可用时 panic：fail-closed，绝不退化到固定 key（L-07）。
+	return a.St.EnsureGroup(ctx, number, rand.Text())
 }
 
 // groupAllowed 判断群号是否被允许：环境变量白名单（引导/兜底）或数据库白名单。
 func (a *App) groupAllowed(ctx context.Context, number string) (bool, error) {
-	for _, allowed := range a.Cfg.AllowedGroups {
-		if allowed == number {
-			return true, nil
-		}
+	if a.envGroupAllowed(number) {
+		return true, nil
 	}
 	return a.St.IsGroupAllowed(ctx, number)
 }
 
-func (a *App) groupNotAllowed(number string) *Error {
-	return NewError(403, "群号 "+number+" 未开通内战工具，请联系管理员添加到白名单")
+func (a *App) envGroupAllowed(number string) bool {
+	for _, allowed := range a.Cfg.AllowedGroups {
+		if allowed == number {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *App) groupNotAllowed() *Error {
+	return NewError(404, groupUnavailableMessage)
 }
 
 // EnsureMember 取（或创建）当前登录用户在群内的资料。
@@ -170,17 +193,4 @@ func (a *App) UpdateProfile(ctx context.Context, member store.Member, payload Pr
 		return store.Member{}, MemberView{}, err
 	}
 	return updated, a.memberView(updated), nil
-}
-
-func randomKey(n int) string {
-	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-	buf := make([]byte, n)
-	if _, err := rand.Read(buf); err != nil {
-		// crypto/rand 不可用时退化为固定前缀，保证服务仍能启动。
-		return strings.Repeat("0", n)
-	}
-	for i := range buf {
-		buf[i] = alphabet[int(buf[i])%len(alphabet)]
-	}
-	return string(buf)
 }

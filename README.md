@@ -129,22 +129,29 @@ http://localhost:8080/auth/dev?qq=10001&nickname=测试玩家&redirect=/
 | `LCW_BASE_URL` | `http://localhost:8080` | 对外访问地址，影响 QQ 回调与 Cookie Secure |
 | `LCW_TIMEZONE` | `Asia/Shanghai` | 展示时区 |
 | `LCW_ALLOWED_GROUPS` | 空 | 群号白名单，逗号分隔；**为空时拒绝所有群** |
-| `LCW_DEV_LOGIN` | `false` | 是否开放 `/auth/dev` |
+| `LCW_DEV_LOGIN` | `false` | 是否开放 `/auth/dev`；生产形态开启会拒绝启动 |
+| `LCW_DEV_MODE` | `false` | 仅本地调试：放宽空口令校验与开发登录限制 |
 | `LCW_QQ_APP_ID` | 空 | 可选：QQ 互联 AppID，配置后才启用快捷登录 |
 | `LCW_QQ_APP_KEY` | 空 | 可选：QQ 互联 AppKey |
 | `LCW_QQ_REDIRECT_URI` | `${BASE_URL}/auth/qq/callback` | QQ 回调地址 |
-| `LCW_SESSION_TTL_HOURS` | `720` | 登录会话有效期 |
-| `LCW_ROFL_MAX_KB` | `131072` | 录像上传上限（128MB） |
+| `LCW_SESSION_TTL_HOURS` | `168` | 会话空闲有效期 |
+| `LCW_SESSION_MAX_HOURS` | `720` | 会话绝对寿命（到期必须重新登录） |
+| `LCW_ROFL_MAX_KB` | `65536` | 录像上传上限（64MB） |
+| `LCW_UPLOAD_CONCURRENCY` | `2` | 录像解析全局并发 |
 | `LCW_COOKIE_SECURE` | `auto` | `auto` 时按 `LCW_BASE_URL` 是否为 https 决定 |
-| `LCW_TRUST_PROXY` | `true` | 是否信任 `X-Forwarded-*` |
+| `LCW_TRUST_PROXY` | `false` | 兼容开关：true 且未配可信网段时只信任回环 |
+| `LCW_TRUSTED_PROXIES` | 空 | 可信代理 CIDR，例如 `127.0.0.1/32,172.16.0.0/12` |
+| `LCW_MIGRATE_ON_START` | `true` | 启动时自动建表/升级；生产建议 false + `migrate` |
 | `LCW_CHAMPION_ICON_DIR` | `${DATA_DIR}/champions` | 本地英雄头像目录 |
 | `LCW_DDRAGON_VERSION` | 空（自动探测） | DataDragon 英雄数据版本；部署模板默认固定 16.20.1 |
 | `LCW_DB_DSN` | 空 | 完整 MySQL DSN；设置后忽略下面的分项 |
 | `LCW_DB_HOST` / `LCW_DB_PORT` | `127.0.0.1` / `3306` | MySQL 地址 |
-| `LCW_DB_USER` / `LCW_DB_PASSWORD` | `root` / 空 | MySQL 账号 |
+| `LCW_DB_USER` / `LCW_DB_PASSWORD` | `root` / 空 | MySQL 账号；口令为空且非 `LCW_DEV_MODE` 时拒绝启动 |
 | `LCW_DB_NAME` | `lol_civil_war` | 数据库名 |
 
 Compose 额外使用：`MYSQL_DATABASE`、`MYSQL_USER`、`MYSQL_PASSWORD`、`MYSQL_ROOT_PASSWORD`、`MYSQL_IMAGE`、`LCW_IMAGE`、`LCW_BIND`。
+
+安全加固细节与残留风险见 [docs/security.md](docs/security.md)。
 
 ### 账号与 QQ 快捷登录
 

@@ -1,8 +1,9 @@
 # HTTP 接口
 
 - 基础路径：`/api`
-- 认证：同域 Cookie 会话（`lcw_session`）；未登录返回 401。
-- CSRF：写请求必须带 `X-XSRF-TOKEN` 请求头（值来自 `XSRF-TOKEN` Cookie），失败返回 419。
+- 认证：同域 Cookie 会话（HTTPS 为 `__Host-lcw_session`，HTTP 调试为 `lcw_session`）；未登录返回 401。
+- CSRF：写请求必须带 `X-XSRF-TOKEN` 请求头（值来自 `XSRF-TOKEN` Cookie），失败返回 419；不支持 query `_token`。
+- 会话：空闲 168 小时、绝对寿命 720 小时（均可配置）；`/api/meta`、`/api/me` 不会创建会话。
 - 请求/响应均为 JSON；上传录像为 `multipart/form-data`，字段名 `file`。
 - 错误：`{"message": "..."}`；表单校验额外带 `errors`。
 - 时间：ISO8601，例 `2026-10-21T18:00:00+08:00`。
@@ -16,7 +17,7 @@
 | GET | `/api/me` | 当前登录用户；未登录 `authenticated=false` |
 | GET | `/api/power/calculate` | 战力计算器：`position`、`region`、`tier`、`division`、`lp` |
 | GET | `/api/champions/library` | 英雄资料库搜索：`q`、`position` |
-| GET | `/api/champions` | DataDragon 英雄名与最新版本：`version` |
+| GET | `/api/champions` | DataDragon 英雄名与最新版本：`version`（仅接受 latest / 配置版本，其他返回 422） |
 
 `/api/health` 响应：
 
@@ -69,7 +70,7 @@ QQ 快捷登录流程：
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| POST | `/api/groups/resolve` | 用群号换公开 key：`{"groupNumber":"123456789"}` → `{"key":"...","name":null}` |
+| POST | `/api/groups/resolve` | 用群号换公开 key：`{"groupNumber":"123456789"}` → `{"key":"...","name":null}`；未开通统一 404 |
 | GET | `/api/groups/{group}` | 群信息 + 我的资料 + meta |
 | PUT | `/api/groups/{group}/profile` | 保存群内资料 |
 
@@ -215,9 +216,9 @@ QQ 号可修改，但同一群内不能重复（422）。接口返回的 QQ 号�
 | 状态 | 场景 |
 | --- | --- |
 | 401 | 未登录 / 会话过期 |
-| 403 | 非组织者操作、群号不在白名单 |
-| 404 | 组织、成员或对局不存在 |
+| 403 | 非组织者操作、无权限修改他人报名 |
+| 404 | 组织、成员或对局不存在；群未开通/未建档 |
 | 409 | 报名已截止、比赛已结束、系列赛已分出胜负 |
 | 419 | CSRF Token 缺失或不匹配（刷新页面重试） |
 | 422 | 参数校验失败、录像无法解析 |
-| 429 | 请求过于频繁 |
+| 429 | 请求过于频繁；同一邮箱 15 分钟内失败 10 次会进入登录退避 |

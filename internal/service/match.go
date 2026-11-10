@@ -300,12 +300,12 @@ func (a *App) ImportRofl(ctx context.Context, event store.Event, gameNo int, act
 		return nil, err
 	}
 
-	upload, err := a.importRoflFile(ctx, file, actor)
+	upload, err := a.importRoflFile(ctx, event.GroupID, file, actor)
 	if err != nil {
 		return nil, err
 	}
 	if upload.MatchID == nil || *upload.MatchID != found.ID || upload.FileName != file.Name {
-		if err := a.St.UpdateRoflOwner(ctx, upload.ID, found.ID, file.Name, file.Size); err != nil {
+		if err := a.St.UpdateRoflOwner(ctx, upload.ID, event.GroupID, found.ID, file.Name, file.Size); err != nil {
 			return nil, err
 		}
 		upload.MatchID = &found.ID
@@ -390,6 +390,25 @@ func (a *App) Rate(ctx context.Context, event store.Event, gameNo int, actor sto
 	return RatingSummaryView{MemberID: targetMemberID, Average: float64(score), Count: 1, MyScore: &score}, nil
 }
 
+// maxPlayerRawBytes 限制客户端原样回传的录像统计块大小（L-05）。
+const maxPlayerRawBytes = 8 << 10
+
+// normalizeRawPlayer 只接受 JSON 对象形式的 raw 字段，并限制体积，
+// 避免结构不可控的客户端数据长期落库、给未来的渲染方式留下二阶注入面。
+func normalizeRawPlayer(raw json.RawMessage) (json.RawMessage, error) {
+	if len(raw) == 0 || string(raw) == "null" {
+		return nil, nil
+	}
+	if len(raw) > maxPlayerRawBytes {
+		return nil, ErrInvalid("玩家原始数据不能超过 8KB")
+	}
+	var object map[string]any
+	if err := json.Unmarshal(raw, &object); err != nil || object == nil {
+		return nil, ErrInvalid("玩家原始数据必须是 JSON 对象")
+	}
+	return raw, nil
+}
+
 // fillPlayersFromRoster 从已套用阵容生成 10 名玩家。
 func (a *App) fillPlayersFromRoster(ctx context.Context, event store.Event, m store.Match, roster *RosterPayload) error {
 	team1Side := defaultSide(m.Team1Side)
@@ -432,6 +451,9 @@ func (a *App) fillPlayersFromRoster(ctx context.Context, event store.Event, m st
 
 // normalizePlayers 校验并归一化玩家列表。
 func (a *App) normalizePlayers(ctx context.Context, event store.Event, input []json.RawMessage, blueWin *bool) ([]store.MatchPlayer, error) {
+	if len(input) > 10 {
+		return nil, ErrInvalid("一局最多 10 名玩家")
+	}
 	out := make([]store.MatchPlayer, 0, len(input))
 	seenSlots := map[string]bool{}
 	seenMembers := map[int64]bool{}
@@ -506,6 +528,10 @@ func (a *App) normalizePlayers(ctx context.Context, event store.Event, input []j
 		if len([]rune(champion)) > 64 {
 			return nil, ErrInvalid("英雄名称最多 64 个字符")
 		}
+		raw, err := normalizeRawPlayer(item.Raw)
+		if err != nil {
+			return nil, err
+		}
 
 		win := false
 		if blueWin != nil {
@@ -527,7 +553,7 @@ func (a *App) normalizePlayers(ctx context.Context, event store.Event, input []j
 			DamageTaken:       maxInt64(0, item.DamageTaken),
 			VisionScore:       maxInt(0, item.VisionScore),
 			Win:               win,
-			Raw:               item.Raw,
+			Raw:               raw,
 		})
 	}
 	return out, nil
@@ -537,6 +563,9 @@ func (a *App) normalizePlayers(ctx context.Context, event store.Event, input []j
 func (a *App) normalizeBans(event store.Event, input []json.RawMessage) ([]store.MatchBan, error) {
 	if !event.HasBP {
 		return []store.MatchBan{}, nil
+	}
+	if len(input) > 10 {
+		return nil, ErrInvalid("一局最多 10 个 Ban 位")
 	}
 	out := make([]store.MatchBan, 0, len(input))
 	seen := map[string]bool{}
@@ -566,8 +595,8 @@ func (a *App) normalizeBans(event store.Event, input []json.RawMessage) ([]store
 	return out, nil
 }
 
-// importRoflFile 校验、解析并按 sha256 幂等落库。
-func (a *App) importRoflFile(ctx context.Context, file UploadedFile, actor store.Member) (*store.RoflUpload, error) {
+// importRoflFile 校验、解析并按 (group_id, sha256) 幂等落库。
+func (a *App) importRoflFile(ctx context.Context, groupID int64, file UploadedFile, actor store.Member) (*store.RoflUpload, error) {
 	maxKB := a.Cfg.RoflMaxKB
 	if file.Size > maxKB*1024 {
 		return nil, ErrInvalid(fmt.Sprintf("录像文件过大，最大支持 %d KB", maxKB))
@@ -580,7 +609,7 @@ func (a *App) importRoflFile(ctx context.Context, file UploadedFile, actor store
 	if err != nil {
 		return nil, ErrInvalid("无法读取上传的录像文件")
 	}
-	existing, err := a.St.RoflBySHA(ctx, sum)
+	existing, err := a.St.RoflBySHA(ctx, groupID, sum)
 	if err != nil {
 		return nil, err
 	}
@@ -602,6 +631,7 @@ func (a *App) importRoflFile(ctx context.Context, file UploadedFile, actor store
 		return nil, err
 	}
 	upload := store.RoflUpload{
+		GroupID:           groupID,
 		FileName:          file.Name,
 		FileSize:          file.Size,
 		SHA256:            sum,
@@ -855,6 +885,7 @@ func parseNullableBool(raw json.RawMessage, message string) (*bool, error) {
 }
 
 func hashFile(path string) (string, error) {
+	// #nosec G304 -- path 是本服务自己创建的临时文件
 	f, err := os.Open(path)
 	if err != nil {
 		return "", err
