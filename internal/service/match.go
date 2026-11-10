@@ -8,9 +8,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/chyoumu114/lol-civil-war/internal/domain/match"
 	"github.com/chyoumu114/lol-civil-war/internal/domain/rank"
@@ -617,6 +619,7 @@ func (a *App) importRoflFile(ctx context.Context, groupID int64, file UploadedFi
 		return existing, nil
 	}
 
+	parseStarted := time.Now()
 	metadata, err := a.Parser.ParseFile(file.Path)
 	if err != nil {
 		var parseErr *rofl.ParseError
@@ -626,6 +629,12 @@ func (a *App) importRoflFile(ctx context.Context, groupID int64, file UploadedFi
 		return nil, ErrInvalid(err.Error())
 	}
 
+	slog.Info("rofl 解析完成",
+		"bytes", file.Size,
+		"metaBytes", metadata.MetaBytes,
+		"players", len(metadata.Players),
+		"duration", time.Since(parseStarted).Round(time.Millisecond).String(),
+	)
 	parsed, err := json.Marshal(metadata.ToMap())
 	if err != nil {
 		return nil, err

@@ -40,16 +40,36 @@
 5. **迁移**：默认启动时自动迁移；生产建议预执行 `lol-civil-war migrate`，并设置 `LCW_MIGRATE_ON_START=false`，运行时账号只保留 `SELECT/INSERT/UPDATE/DELETE`。
 6. **反向代理**：使用 Nginx/Caddy 时配置 `LCW_TRUSTED_PROXIES`，否则所有请求的限流键都会退化为代理地址（可用，但粒度变粗）。示例见 `deploy/.env.example`。
 
-## 3. 残留风险（未在本轮代码中完全消除）
+## 3. 第三轮回归修复（2026-11-10）
 
-- **注册接口仍会提示邮箱已注册**：为了可用性保留 409 文案，账号枚举仍可通过注册路径探测。彻底消除需要邮箱验证码流程。
+在 v0.5.0 上线后，依据第三轮审计报告又做了一轮加固：
+
+| 编号 | 处理方式 | 主要位置 |
+| --- | --- | --- |
+| I-05 | `go.mod` 最低版本从 `1.27.3` 降到 `1.26.0`（`golang.org/x/crypto v0.58` 的最低要求）；CI 的 `setup-go` 按 go.mod 安装 1.26.x，安全门禁可真正执行；发布镜像仍用 Go 1.27.3 构建并验证 | `go.mod`、`.github/workflows/ci.yml`、`deploy/Dockerfile` |
+| N-6 | 有会话时 **只接受会话绑定的 CSRF Token**，删除双提交回退；SPA/HTML 页面也加载会话并刷新 XSRF Cookie，避免误删 Cookie 后无法恢复 | `internal/web/session.go` |
+| N-1 | `maxMetadataBytes` 32MB → 8MB；`statsJson` 改流式解码，玩家条目上限 64；解析记录 `metaBytes`/耗时 | `internal/domain/rofl/parser.go`、`internal/service/match.go` |
+| N-2 | 注册增加 IP（10 次/10 分钟）与同邮箱（5 次/小时）计数；409 冲突写审计 | `internal/web/handlers_auth.go` |
+| N-3 | 登录账号级失败退避在 v0.5.0 已实现（`loginBlocked`），本轮补测试确认三条失败路径状态码/响应体一致 | `internal/web/handlers_auth.go`、`flow_test.go` |
+| N-4 | 解析路径彻底只读；环境变量白名单群改为 **启动期一次性建档**（`provisionEnvGroups`） | `internal/service/group.go`、`cmd/lol-civil-war/main.go` |
+| N-5 | 新增 `register_conflict` / `register_rate_limited` / `register_blocked` 审计；登录、DevLogin、QQ、白名单审计在 v0.5.0 已覆盖 | `internal/web/handlers_auth.go`、`audit.go` |
+| N-7.1 | Cookie `MaxAge` 取 `min(空闲到期, 绝对到期)` | `internal/web/session.go` |
+| N-7.2 | DDragon `calls` 随版本缓存一起清理 | `internal/service/ddragon.go` |
+| N-7.3 | 删除 `X-Real-IP` 回退，只信 `X-Forwarded-For` | `internal/web/response.go` |
+| N-7.4 | `maskQQ` 增加单测，确认只保留前后 2 位、隐藏中段 | `internal/service/auth_test.go` |
+
+新增测试：CSRF 登录态拒绝双提交、注册 IP 限流、登录失败三路径一致性、玩家条目上限、QQ 脱敏。
+
+## 4. 残留风险（未在本轮代码中完全消除）
+
+- **注册接口仍会提示邮箱已注册**：已加 IP/邮箱计数与审计，但换邮箱批量探测仍可行。彻底消除需要邮箱验证码流程。
 - **ROFL 解析器仍一次性读入最多 32MB 元数据**：已通过上传上限与并发配额限制影响面，未改为流式解析。
 - **限流是单实例进程内状态**：重启清零、多副本不共享；多副本部署需换 Redis 等共享存储。
-- **CSRF 采用“会话 Token + 双提交 Cookie”双保险**：入口页无会话时使用双提交；已拒绝跨站 `Sec-Fetch-Site`，但依赖浏览器 Cookie 隔离。
+- **CSRF**：有会话时严格绑定会话 Token；无会话（登录/注册/入口页）才使用双提交。`XSRF-TOKEN` 尚未改 `__Host-` 前缀（需前端 axios 同步改名），单域名部署下风险有限。
 - **`LCW_MIGRATE_ON_START` 默认仍为 true**：兼容旧部署；按上文关闭后才能真正做到运行时账号无 DDL 权限。
 - **审计日志覆盖关键事件但未做告警**：需要接入日志平台后配置增长率/失败率告警。
 
-## 4. 本地验证
+## 5. 本地验证
 
 ```bash
 # 单元 + MySQL 集成测试

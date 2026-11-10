@@ -40,6 +40,22 @@ func TestValidatePassword(t *testing.T) {
 	}
 }
 
+// TestMaskQQ 确认 QQ 脱敏遮盖中段（I-03/N-7.4）。
+func TestMaskQQ(t *testing.T) {
+	value := "123456789"
+	masked := maskQQ(&value)
+	if masked == nil || *masked != "12****89" {
+		t.Fatalf("maskQQ = %v, want 12****89", masked)
+	}
+	short := "12345"
+	if got := maskQQ(&short); got == nil || *got != "***" {
+		t.Fatalf("短 QQ 脱敏 = %v", got)
+	}
+	if maskQQ(nil) != nil {
+		t.Fatal("nil 应返回 nil")
+	}
+}
+
 // TestRandomDigits 确认随机数字生成失败可见、结果长度固定。
 func TestRandomDigits(t *testing.T) {
 	value, err := randomDigits(8)

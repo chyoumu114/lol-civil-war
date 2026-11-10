@@ -2,6 +2,7 @@ package web
 
 import (
 	"crypto/subtle"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -15,6 +16,14 @@ const (
 	// 计数只发生在失败时，成功登录会清零，避免正常用户被误伤。
 	loginFailLimit  = 10
 	loginFailWindow = 15 * time.Minute
+
+	// 注册侧限制（N-2）：单 IP 10 次/10 分钟；同一邮箱 5 次/小时。
+	// 同一邮箱的计数只用于给探测者增加摩擦，无法根治“换邮箱批量探测”，
+	// 彻底方案需要邮箱验证码流程。
+	registerIPLimit     = 10
+	registerIPWindow    = 10 * time.Minute
+	registerEmailLimit  = 5
+	registerEmailWindow = time.Hour
 )
 
 type emailAuthPayload struct {
@@ -50,13 +59,40 @@ func (s *Server) handleEmailRegister(w http.ResponseWriter, r *http.Request) {
 		writeMessage(w, http.StatusUnprocessableEntity, "请求格式不正确")
 		return
 	}
+	ip := clientIP(r, s.Cfg.TrustedProxies)
+	if allowed, retry := s.limiter.allow("register-ip:"+ip, registerIPLimit, registerIPWindow); !allowed {
+		w.Header().Set("Retry-After", itoa(retry))
+		auditLog("register_rate_limited", "ip", ip)
+		writeMessage(w, http.StatusTooManyRequests, "操作过于频繁，请稍后再试")
+		return
+	}
+	email := strings.TrimSpace(payload.Email)
+	if email != "" {
+		if blocked, retry := s.limiter.blocked(registerKey(email), registerEmailLimit, registerEmailWindow); blocked {
+			w.Header().Set("Retry-After", itoa(retry))
+			auditLog("register_blocked", "email", maskEmail(email), "ip", ip)
+			writeMessage(w, http.StatusTooManyRequests, "操作过于频繁，请稍后再试")
+			return
+		}
+	}
 	user, err := s.App.RegisterEmail(r.Context(), payload.Email, payload.Password)
 	if err != nil {
+		// 409 说明邮箱已存在；计入该邮箱的探测次数并审计（N-2/N-5）。
+		var bizErr *service.Error
+		if email != "" && errors.As(err, &bizErr) && bizErr.Status == http.StatusConflict {
+			s.limiter.hit(registerKey(email), registerEmailWindow)
+			auditLog("register_conflict", "email", maskEmail(email), "ip", ip)
+		}
 		writeError(w, err)
 		return
 	}
-	auditLog("register_success", "userNo", user.UserNo, "ip", clientIP(r, s.Cfg.TrustedProxies))
+	auditLog("register_success", "userNo", user.UserNo, "ip", ip)
 	s.loginJSON(w, r, user)
+}
+
+// registerKey 以邮箱为键，给同一邮箱的重复探测增加摩擦。
+func registerKey(email string) string {
+	return "register:" + strings.ToLower(strings.TrimSpace(email))
 }
 
 // handleEmailLogin 邮箱密码登录。

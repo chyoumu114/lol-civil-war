@@ -1,6 +1,6 @@
 module github.com/chyoumu114/lol-civil-war
 
-go 1.27.3
+go 1.26.0
 
 require (
 	github.com/go-sql-driver/mysql v1.10.1

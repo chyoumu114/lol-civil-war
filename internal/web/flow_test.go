@@ -84,6 +84,12 @@ func newTestServer(t *testing.T) (*httptest.Server, *store.Store) {
 		_ = admin.Close()
 		t.Fatalf("打开数据库失败: %v", err)
 	}
+	// 与生产启动逻辑一致：环境变量白名单群在启动期建档，解析路径只读（N-4）。
+	if _, err := st.EnsureGroup(context.Background(), testGroup, "test-group-public-key"); err != nil {
+		_, _ = admin.Exec("DROP DATABASE `" + dbName + "`")
+		_ = admin.Close()
+		t.Fatalf("预建测试群失败: %v", err)
+	}
 	app := service.New(cfg, st)
 	server := New(app, cfg, "test")
 	ts := httptest.NewServer(server.Handler())
@@ -464,6 +470,87 @@ func TestDatabaseWhitelist(t *testing.T) {
 	status, body := client.raw("POST", "/api/groups/resolve", map[string]any{"groupNumber": number}, true)
 	if status != http.StatusNotFound {
 		t.Fatalf("移除白名单后应返回 404，实际 %d: %s", status, body)
+	}
+}
+
+// TestCSRFRequiresSessionTokenWhenLoggedIn 验证 N-6：
+// 有会话时只接受与会话绑定的 Token，不能回退到 Cookie==Header 的双提交。
+func TestCSRFRequiresSessionTokenWhenLoggedIn(t *testing.T) {
+	ts, _ := newTestServer(t)
+	client := newAPIClient(t, ts.URL)
+	client.devLogin("30001", "会话绑定测试")
+
+	parsed, err := url.Parse(client.base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// 模拟兄弟子域写入的 XSRF Cookie：Cookie 与请求头一致，但不是会话 Token。
+	client.http.Jar.SetCookies(parsed, []*http.Cookie{{
+		Name: csrfCookieName, Value: "attacker-controlled-token", Path: "/",
+	}})
+	status, body := client.raw("POST", "/api/groups/resolve", map[string]any{"groupNumber": testGroup}, true)
+	if status != 419 {
+		t.Fatalf("登录态下 Cookie==Header 必须被拒绝，实际 %d: %s", status, body)
+	}
+}
+
+// TestRegisterRateLimited 验证 N-2：同一 IP 的注册尝试被限制。
+func TestRegisterRateLimited(t *testing.T) {
+	ts, _ := newTestServer(t)
+	client := newAPIClient(t, ts.URL)
+	client.do("GET", "/api/meta", nil, http.StatusOK)
+
+	for i := 0; i < 10; i++ {
+		status, body := client.raw("POST", "/api/auth/register", map[string]any{
+			"email": fmt.Sprintf("ratelimit%d@example.com", i), "password": "password123",
+		}, true)
+		if status != http.StatusOK {
+			t.Fatalf("第 %d 次注册失败: %d %s", i+1, status, body)
+		}
+	}
+	status, body := client.raw("POST", "/api/auth/register", map[string]any{
+		"email": "ratelimit-final@example.com", "password": "password123",
+	}, true)
+	if status != http.StatusTooManyRequests {
+		t.Fatalf("超过注册配额应返回 429，实际 %d: %s", status, body)
+	}
+}
+
+// TestLoginFailureUniform 验证 M-01：不存在 / 无密码 / 密码错误三条路径的响应完全一致。
+func TestLoginFailureUniform(t *testing.T) {
+	ts, st := newTestServer(t)
+
+	client := newAPIClient(t, ts.URL)
+	client.do("GET", "/api/meta", nil, http.StatusOK)
+	client.do("POST", "/api/auth/register", map[string]any{
+		"email": "uniform@example.com", "password": "password123",
+	}, http.StatusOK)
+
+	// 旧数据账号：有邮箱但没有密码哈希。
+	noPasswordEmail := "legacy-nopass@example.com"
+	if _, err := st.CreateUser(context.Background(), "U90000001", &noPasswordEmail, nil, nil, "旧账号", nil, false); err != nil {
+		t.Fatalf("创建无密码账号失败: %v", err)
+	}
+
+	probe := func(email, password string) (int, string) {
+		s := newAPIClient(t, ts.URL)
+		s.do("GET", "/api/meta", nil, http.StatusOK)
+		status, body := s.raw("POST", "/api/auth/login", map[string]any{
+			"email": email, "password": password,
+		}, true)
+		return status, string(body)
+	}
+
+	statusWrong, bodyWrong := probe("uniform@example.com", "wrong-password")
+	statusMissing, bodyMissing := probe("nobody@example.com", "wrong-password")
+	statusNoPass, bodyNoPass := probe(noPasswordEmail, "wrong-password")
+
+	if statusWrong != http.StatusUnauthorized || statusMissing != statusWrong || statusNoPass != statusWrong {
+		t.Fatalf("三条失败路径状态码不一致: wrong=%d missing=%d nopass=%d", statusWrong, statusMissing, statusNoPass)
+	}
+	if bodyMissing != bodyWrong || bodyNoPass != bodyWrong {
+		t.Fatalf("三条失败路径响应体不一致: wrong=%s missing=%s nopass=%s",
+			bodyWrong, bodyMissing, bodyNoPass)
 	}
 }
 

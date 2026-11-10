@@ -86,6 +86,9 @@ func TestParseRofl2(t *testing.T) {
 	if len(metadata.Players) != 2 {
 		t.Fatalf("玩家数 = %d", len(metadata.Players))
 	}
+	if metadata.MetaBytes <= 0 {
+		t.Fatalf("MetaBytes 应大于 0，实际 %d", metadata.MetaBytes)
+	}
 
 	blue := metadata.Players[0]
 	if blue.Team != "blue" || blue.Slot != 1 || blue.Position != "TOP" {
@@ -137,6 +140,20 @@ func TestParseRejectsMissingStats(t *testing.T) {
 	_, err := (Parser{}).ParseFile(path)
 	if err == nil || !strings.Contains(err.Error(), "不包含玩家数据") {
 		t.Fatalf("应报缺少玩家数据: %v", err)
+	}
+}
+
+func TestDecodeStatsRejectsTooManyEntries(t *testing.T) {
+	items := make([]map[string]any, 0, maxStatsEntries+1)
+	for i := 0; i <= maxStatsEntries; i++ {
+		items = append(items, map[string]any{"TEAM": "100"})
+	}
+	raw, err := json.Marshal(items)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := decodeStats(string(raw)); err == nil || !strings.Contains(err.Error(), "条目过多") {
+		t.Fatalf("超量玩家数据应被拒绝: %v", err)
 	}
 }
 

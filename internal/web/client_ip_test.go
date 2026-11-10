@@ -22,7 +22,8 @@ func TestClientIP(t *testing.T) {
 		{name: "全部可信回退对端", remote: "10.0.0.5:1234", xff: "10.0.0.6, 10.0.0.5", want: "10.0.0.5"},
 		{name: "非法链整条忽略", remote: "10.0.0.5:1234", xff: "not-an-ip, 10.0.0.5", want: "10.0.0.5"},
 		{name: "不可信对端忽略 XFF", remote: "8.8.8.8:1234", xff: "1.1.1.1", realIP: "2.2.2.2", want: "8.8.8.8"},
-		{name: "可信代理且无 XFF 用 X-Real-IP", remote: "10.0.0.5:1234", realIP: "9.9.9.9", want: "9.9.9.9"},
+		// N-7.3：不再回退 X-Real-IP，避免上游透传客户端自带值造成伪造。
+		{name: "可信代理且无 XFF 忽略 X-Real-IP", remote: "10.0.0.5:1234", realIP: "9.9.9.9", want: "10.0.0.5"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -57,7 +58,10 @@ func TestSessionPolicy(t *testing.T) {
 		{path: "/api/auth/login", load: true, create: false},
 		{path: "/api/health", load: false, create: false},
 		{path: "/api/champions", load: false, create: false},
-		{path: "/civil-war", load: false, create: false},
+		{path: "/civil-war", load: true, create: false},
+		{path: "/civil-war/KEY/events/1", load: true, create: false},
+		{path: "/assets/index-abc.js", load: false, create: false},
+		{path: "/favicon.svg", load: false, create: false},
 	}
 	for _, tc := range cases {
 		got := policyForPath(tc.path)

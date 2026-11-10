@@ -93,11 +93,7 @@ func clientIP(r *http.Request, trusted []netip.Prefix) string {
 	if ip := forwardedClientIP(trusted, r.Header.Values("X-Forwarded-For")); ip != "" {
 		return ip
 	}
-	if ip := strings.TrimSpace(r.Header.Get("X-Real-IP")); ip != "" {
-		if addr, ok := parseIP(strings.Trim(ip, "[]")); ok {
-			return addr.String()
-		}
-	}
+	// 只信标准的 X-Forwarded-For；X-Real-IP 由客户端自带时可被上游原样透传，故不再回退（N-7.3）。
 	return remote
 }
 

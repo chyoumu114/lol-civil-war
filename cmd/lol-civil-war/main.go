@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"flag"
 	"log/slog"
@@ -75,6 +76,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer st.Close()
+	provisionEnvGroups(st, cfg.AllowedGroups)
 
 	app := service.New(cfg, st)
 	server := web.New(app, cfg, version)
@@ -118,6 +120,30 @@ func main() {
 	defer cancel()
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
 		slog.Error("优雅关闭失败", "error", err)
+	}
+}
+
+// provisionEnvGroups 为 LCW_ALLOWED_GROUPS 中的群补建记录。
+// 建群发生在启动期而不是解析请求路径，符合“读路径不写库”（N-4）。
+func provisionEnvGroups(st *store.Store, numbers []string) {
+	if len(numbers) == 0 {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	for _, number := range numbers {
+		if _, err := st.GroupByNumber(ctx, number); err == nil {
+			continue
+		} else if !errors.Is(err, store.ErrNotFound) {
+			slog.Warn("检查环境白名单群失败", "group", number, "error", err)
+			continue
+		}
+		group, err := st.EnsureGroup(ctx, number, rand.Text())
+		if err != nil {
+			slog.Error("为环境白名单群建档失败", "group", number, "error", err)
+			continue
+		}
+		slog.Info("已为环境白名单群建档", "group", number, "key", group.PublicKey)
 	}
 }
 

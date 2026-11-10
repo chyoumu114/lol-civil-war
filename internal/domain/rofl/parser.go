@@ -16,8 +16,11 @@ const (
 	sigRofl1 = "RIOT\x00\x00"
 	sigRofl2 = "RIOT\x02\x00"
 
-	// maxMetadataBytes 防御异常文件。
-	maxMetadataBytes = 32 * 1024 * 1024
+	// maxMetadataBytes 防御异常文件：真实录像元数据远小于此；整体 JSON 解码会放大数倍，
+	// 因此上限从 32MB 收紧到 8MB（N-1）。
+	maxMetadataBytes = 8 * 1024 * 1024
+	// maxStatsEntries 限制玩家统计条目数（正常一局 10 人）。
+	maxStatsEntries = 64
 )
 
 // 位置代号规范化映射（兼容官方与历史写法）。
@@ -78,6 +81,7 @@ func (Parser) ParseFile(path string) (Metadata, error) {
 	if err := json.Unmarshal(metaJSON, &metadata); err != nil {
 		return Metadata{}, parseErr("录像元数据不是合法的 JSON，文件可能已损坏")
 	}
+	metaBytes := len(metaJSON)
 
 	if gameVersion == "" {
 		gameVersion = stringOf(metadata["gameVersion"])
@@ -137,6 +141,7 @@ func (Parser) ParseFile(path string) (Metadata, error) {
 		BlueWin:        blueWin,
 		Players:        players,
 		Bans:           extractBans(metadata, stats),
+		MetaBytes:      metaBytes,
 	}, nil
 }
 
@@ -189,10 +194,16 @@ func decodeStats(value any) ([]map[string]any, error) {
 	var stats []map[string]any
 	switch v := value.(type) {
 	case string:
-		if err := json.Unmarshal([]byte(v), &stats); err != nil {
-			return nil, parseErr("录像元数据中的玩家数据不是合法 JSON，文件可能已损坏")
+		// 流式解码：解析到第 maxStatsEntries+1 条时立即停止，避免超大数组撑爆内存（N-1）。
+		decoded, err := decodeStatsJSON(v)
+		if err != nil {
+			return nil, err
 		}
+		stats = decoded
 	case []any:
+		if len(v) > maxStatsEntries {
+			return nil, parseErr(fmt.Sprintf("录像玩家数据条目过多（最多 %d 条）", maxStatsEntries))
+		}
 		stats = make([]map[string]any, 0, len(v))
 		for _, item := range v {
 			if m, ok := item.(map[string]any); ok {
@@ -204,6 +215,33 @@ func decodeStats(value any) ([]map[string]any, error) {
 	}
 	if len(stats) == 0 {
 		return nil, parseErr("该录像不包含玩家数据（14.9 – 14.10 版本的录像没有元数据，无法解析）")
+	}
+	return stats, nil
+}
+
+// decodeStatsJSON 以流式方式解析 statsJson 数组，限制元素数量。
+func decodeStatsJSON(raw string) ([]map[string]any, error) {
+	dec := json.NewDecoder(strings.NewReader(raw))
+	token, err := dec.Token()
+	if err != nil {
+		return nil, parseErr("录像元数据中的玩家数据不是合法 JSON，文件可能已损坏")
+	}
+	if delim, ok := token.(json.Delim); !ok || delim != '[' {
+		return nil, parseErr("录像元数据中的玩家数据不是合法 JSON，文件可能已损坏")
+	}
+	stats := make([]map[string]any, 0, 10)
+	for dec.More() {
+		if len(stats) >= maxStatsEntries {
+			return nil, parseErr(fmt.Sprintf("录像玩家数据条目过多（最多 %d 条）", maxStatsEntries))
+		}
+		var item map[string]any
+		if err := dec.Decode(&item); err != nil {
+			return nil, parseErr("录像元数据中的玩家数据不是合法 JSON，文件可能已损坏")
+		}
+		stats = append(stats, item)
+	}
+	if _, err := dec.Token(); err != nil {
+		return nil, parseErr("录像元数据中的玩家数据不是合法 JSON，文件可能已损坏")
 	}
 	return stats, nil
 }

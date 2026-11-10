@@ -298,6 +298,15 @@ func (d *DDragon) store(version string, cached *ddragonCache) {
 		}
 		delete(d.versions, oldestKey)
 	}
+	// calls 只服务白名单版本；随 versions 一起清理，避免未来放宽闸门后无界增长（N-7.2）。
+	for key := range d.calls {
+		if key == "latest" {
+			continue
+		}
+		if _, ok := d.versions[strings.TrimPrefix(key, "champions:")]; !ok {
+			delete(d.calls, key)
+		}
+	}
 }
 
 // callFor 返回某个键的并发合并锁（singleflight 的简化实现，不引入额外依赖）。

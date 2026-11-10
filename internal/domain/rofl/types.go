@@ -34,6 +34,8 @@ type Metadata struct {
 	BlueWin        *bool
 	Players        []Player
 	Bans           map[string]any
+	// MetaBytes 是本次解析的元数据区字节数（用于容量规划/审计，N-1）。
+	MetaBytes int
 }
 
 // ToMap 转成写入数据库与返回给前端的结构（不含原始 metadata）。

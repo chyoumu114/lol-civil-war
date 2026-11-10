@@ -6,6 +6,7 @@ import (
 	"crypto/subtle"
 	"errors"
 	"net/http"
+	"path"
 	"strings"
 	"time"
 
@@ -60,19 +61,34 @@ type sessionPolicy struct {
 	create bool
 }
 
-func policyForPath(path string) sessionPolicy {
+func policyForPath(requestPath string) sessionPolicy {
 	switch {
-	case path == "/api/meta" || path == "/api/me":
+	case requestPath == "/api/meta" || requestPath == "/api/me":
 		return sessionPolicy{load: true}
-	case path == "/auth/qq" || path == "/auth/dev":
+	case requestPath == "/auth/qq" || requestPath == "/auth/dev":
 		// 发起 QQ 登录/开发登录需要服务端保存 OAuth state。
 		return sessionPolicy{load: true, create: true}
-	case strings.HasPrefix(path, "/auth/"), strings.HasPrefix(path, "/api/auth/"):
+	case strings.HasPrefix(requestPath, "/auth/"), strings.HasPrefix(requestPath, "/api/auth/"):
 		return sessionPolicy{load: true}
-	case strings.HasPrefix(path, "/api/groups/"):
+	case strings.HasPrefix(requestPath, "/api/groups/"):
+		return sessionPolicy{load: true}
+	case requestPath == "/up", strings.HasPrefix(requestPath, "/api/"):
+		return sessionPolicy{}
+	case isStaticAssetPath(requestPath):
+		return sessionPolicy{}
+	default:
+		// SPA/HTML 页面：加载会话并刷新与会话绑定的 CSRF Cookie。
+		// 这样即使用户单独丢失 XSRF-TOKEN，也能在下次页面加载时恢复（配合 N-6 的严格绑定）。
 		return sessionPolicy{load: true}
 	}
-	return sessionPolicy{}
+}
+
+// isStaticAssetPath 判断是否静态资源；静态资源不读取会话、不下发 Cookie。
+func isStaticAssetPath(requestPath string) bool {
+	if strings.HasPrefix(requestPath, "/assets/") || strings.HasPrefix(requestPath, "/champions/") {
+		return true
+	}
+	return path.Ext(requestPath) != ""
 }
 
 // sessionFloodError 表示匿名会话创建触发了 IP 限流。
@@ -175,6 +191,10 @@ func (m *sessionManager) readCookieNames() []string {
 func (m *sessionManager) setCookies(w http.ResponseWriter, session store.Session) {
 	now := time.Now()
 	expires := session.ExpiresAt
+	// Cookie 寿命不能超过会话绝对寿命（N-7.1）。
+	if !session.AbsoluteExpiresAt.IsZero() && (expires.IsZero() || session.AbsoluteExpiresAt.Before(expires)) {
+		expires = session.AbsoluteExpiresAt
+	}
 	if expires.IsZero() || !expires.After(now) {
 		expires = now.Add(m.idleTTL)
 	}
@@ -314,10 +334,12 @@ func (m *sessionManager) validateCSRF(r *http.Request) bool {
 	if token == "" {
 		return false
 	}
-	if state := sessionFrom(r.Context()); state != nil && state.session.CSRF != "" {
-		if subtle.ConstantTimeCompare([]byte(token), []byte(state.session.CSRF)) == 1 {
-			return true
+	if state := sessionFrom(r.Context()); state != nil {
+		// 有会话时只接受与会话绑定的 Token，禁止回退到无状态双提交（N-6）。
+		if state.session.CSRF == "" {
+			return false
 		}
+		return subtle.ConstantTimeCompare([]byte(token), []byte(state.session.CSRF)) == 1
 	}
 	cookie, err := r.Cookie(csrfCookieName)
 	if err != nil || cookie.Value == "" {
@@ -386,7 +408,7 @@ func shouldIssueCSRFCookie(r *http.Request) bool {
 		return true
 	case strings.HasPrefix(r.URL.Path, "/api/"), strings.HasPrefix(r.URL.Path, "/auth/"):
 		return false
-	case r.URL.Path == "/up":
+	case r.URL.Path == "/up", isStaticAssetPath(r.URL.Path):
 		return false
 	default:
 		return true

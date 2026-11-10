@@ -78,7 +78,7 @@ Open `http://localhost:18020/` on the server or through an SSH tunnel, then clic
 
 ### Run from source
 
-Requirements: Go 1.27.3+, Node.js 22.23.4+, and a reachable MySQL 8 instance with a database:
+Requirements: Go 1.26+ (minimum imposed by dependencies; release images are built with Go 1.27.3), Node.js 22.23.4+, and a reachable MySQL 8 instance with a database:
 
 ```bash
 make build

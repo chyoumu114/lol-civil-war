@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"crypto/rand"
 	"regexp"
 	"strings"
 
@@ -57,9 +56,8 @@ func (a *App) ResolveGroup(ctx context.Context, identifier string) (store.Group,
 
 // ResolveGroupByNumber 用群号换取群。
 //
-// 只读取已存在的群记录：数据库白名单的建档由 `group add` 完成，
-// 解析路径不再插入新行（L-06）。仅环境变量白名单（静态、数量有限）允许首访自动建档，
-// 保证“只改 .env 就能用”的部署方式仍然成立。
+// 只读取已存在的群记录：建档由 `group add`（数据库白名单）或启动时的
+// provisionEnvGroups（环境变量白名单）完成，解析路径绝不写库（N-4/L-06）。
 func (a *App) ResolveGroupByNumber(ctx context.Context, number string) (store.Group, error) {
 	allowed, err := a.groupAllowed(ctx, number)
 	if err != nil {
@@ -69,17 +67,13 @@ func (a *App) ResolveGroupByNumber(ctx context.Context, number string) (store.Gr
 		return store.Group{}, a.groupNotAllowed()
 	}
 	group, err := a.St.GroupByNumber(ctx, number)
-	if err == nil {
-		return group, nil
-	}
-	if !IsNotFound(err) {
+	if err != nil {
+		if IsNotFound(err) {
+			return store.Group{}, a.groupNotAllowed()
+		}
 		return store.Group{}, err
 	}
-	if !a.envGroupAllowed(number) {
-		return store.Group{}, a.groupNotAllowed()
-	}
-	// crypto/rand.Text 在随机源不可用时 panic：fail-closed，绝不退化到固定 key（L-07）。
-	return a.St.EnsureGroup(ctx, number, rand.Text())
+	return group, nil
 }
 
 // groupAllowed 判断群号是否被允许：环境变量白名单（引导/兜底）或数据库白名单。
