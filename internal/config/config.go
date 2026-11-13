@@ -104,8 +104,8 @@ func Load() (*Config, error) {
 		QQRedirectURI:     env("LCW_QQ_REDIRECT_URI", ""),
 		RoflMaxKB:         envInt64("LCW_ROFL_MAX_KB", 64*1024),
 		UploadConcurrency: int(envInt64("LCW_UPLOAD_CONCURRENCY", 2)),
-		SessionTTL:        time.Duration(envInt64("LCW_SESSION_TTL_HOURS", 168)) * time.Hour,
-		SessionMaxTTL:     time.Duration(envInt64("LCW_SESSION_MAX_HOURS", 720)) * time.Hour,
+		SessionTTL:        time.Duration(envInt64("LCW_SESSION_TTL_HOURS", 72)) * time.Hour,
+		SessionMaxTTL:     time.Duration(envInt64("LCW_SESSION_MAX_HOURS", 336)) * time.Hour,
 		TrustProxy:        envBool("LCW_TRUST_PROXY", false),
 		TrustedProxies:    trustedProxies,
 		ChampionIconDir:   env("LCW_CHAMPION_ICON_DIR", ""),
@@ -177,10 +177,10 @@ func Load() (*Config, error) {
 		cfg.DivisionStep = 100
 	}
 	if cfg.SessionTTL <= 0 {
-		cfg.SessionTTL = 168 * time.Hour
+		cfg.SessionTTL = 72 * time.Hour
 	}
 	if cfg.SessionMaxTTL <= 0 {
-		cfg.SessionMaxTTL = 720 * time.Hour
+		cfg.SessionMaxTTL = 336 * time.Hour
 	}
 	if cfg.SessionMaxTTL < cfg.SessionTTL {
 		cfg.SessionMaxTTL = cfg.SessionTTL
@@ -220,9 +220,15 @@ func (c *Config) validate() error {
 	if c.DBPassword == "" && !c.DevMode {
 		return errors.New("LCW_DB_PASSWORD 为空：请配置数据库口令；本地无口令开发请显式设置 LCW_DEV_MODE=true")
 	}
-	// 开发登录等价于“任何知道 QQ 号的人都能登录任意账号”，生产形态必须拒绝。
-	if c.DevLogin && !isLoopbackHost(base.Hostname()) && (base.Scheme == "https" || !c.DevMode) {
-		return errors.New("当前配置禁止开启开发登录（LCW_DEV_LOGIN=true）：仅限回环地址，或显式设置 LCW_DEV_MODE=true 的内网调试")
+	// 开发登录等价于“任何知道 QQ 号的人都能登录任意账号”：
+	// 必须显式 DevMode，且监听地址本身是回环，避免反代把 /auth/dev 暴露到公网（V-02）。
+	if c.DevLogin {
+		if !c.DevMode {
+			return errors.New("LCW_DEV_LOGIN=true 必须同时设置 LCW_DEV_MODE=true（仅限本地调试）")
+		}
+		if !isLoopbackAddr(c.Addr) {
+			return errors.New("LCW_DEV_LOGIN=true 要求 LCW_ADDR 绑定回环地址（例如 127.0.0.1:8080）")
+		}
 	}
 	if c.CookieSecure && base.Scheme != "https" {
 		return errors.New("LCW_COOKIE_SECURE=true 要求 LCW_BASE_URL 使用 https，否则浏览器不会回传会话 Cookie")
@@ -244,6 +250,12 @@ func (c *Config) Warnings() []string {
 	}
 	if c.MigrateOnStart {
 		out = append(out, "启动时自动执行建表/升级（需要 DDL 权限）；生产可用 migrate 子命令并设置 LCW_MIGRATE_ON_START=false")
+	}
+	for _, prefix := range c.TrustedProxies {
+		if prefix.Addr().Is4() && prefix.Bits() < 24 {
+			out = append(out, fmt.Sprintf("可信代理网段过宽（%s）：建议收敛到实际网关 /32，否则同网段可伪造 XFF（V-03）", prefix))
+			break
+		}
 	}
 	return out
 }
@@ -379,6 +391,18 @@ func loopbackPrefixes() []netip.Prefix {
 		netip.MustParsePrefix("127.0.0.0/8"),
 		netip.MustParsePrefix("::1/128"),
 	}
+}
+
+// isLoopbackAddr 判断监听地址是否绑定回环（支持 "127.0.0.1:8080" 与 "[::1]:8080"）。
+func isLoopbackAddr(addr string) bool {
+	host, _, err := net.SplitHostPort(strings.TrimSpace(addr))
+	if err != nil {
+		host = strings.Trim(strings.TrimSpace(addr), "[]")
+	}
+	if host == "" {
+		return false // ":8080" 监听全网卡
+	}
+	return isLoopbackHost(host)
 }
 
 // isLoopbackHost 判断 URL 主机名是否为回环地址。

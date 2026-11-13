@@ -1,6 +1,7 @@
 <template>
   <div class="entry">
-    <div class="entry-card card">
+    <LoginCard v-if="ready && !authenticated" />
+    <div v-else-if="ready" class="entry-card card">
       <router-link to="/" class="entry-back"><icon-left /> 返回首页</router-link>
       <div class="entry-brand">CIVIL WAR</div>
       <h1 class="entry-title">进入内战组织</h1>
@@ -29,7 +30,7 @@
         </div>
       </div>
 
-      <div class="entry-tip">群号需已在服务端白名单中开通，首次进入会自动创建群。</div>
+      <div class="entry-tip">群号需已在服务端白名单中开通；登录后凭群号进入。</div>
 
       <a-collapse class="entry-notice" :bordered="false">
         <a-collapse-item key="notice" header="进群须知（点击展开）">
@@ -47,22 +48,34 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
+import LoginCard from '../components/LoginCard.vue'
+import { loadMe, loadMeta, session } from '../stores/session'
 
 const router = useRouter()
 const groupNumber = ref('')
 const loading = ref(false)
 const error = ref('')
 const recent = ref([])
+const ready = ref(false)
+const authenticated = computed(() => session.me?.authenticated === true)
 
-onMounted(() => {
+onMounted(async () => {
   const saved = JSON.parse(localStorage.getItem('lol.civilwar.recent') || '[]')
   // 新格式只保存 { key, name }，不把 QQ 群号留在 localStorage
   recent.value = Array.isArray(saved)
     ? saved.filter((item) => item && typeof item === 'object' && item.key).slice(0, 5)
     : []
+  try {
+    // V-01：服务端 resolve 要求登录，入口页先完成登录再显示群号表单
+    await loadMeta()
+    await loadMe()
+  } catch {
+    // 网络异常时仍展示登录卡片
+  }
+  ready.value = true
 })
 
 function go(item) {

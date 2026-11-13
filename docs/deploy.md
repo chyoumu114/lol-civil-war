@@ -45,9 +45,9 @@ curl -fsS http://127.0.0.1:18020/api/health
 | `LCW_DEV_LOGIN` | `false` | 生产必须关闭；生产形态开启会拒绝启动 |
 | `LCW_DEV_MODE` | `false` | 仅本地/内网调试可设 true（放宽空口令校验） |
 | `LCW_TRUST_PROXY` | `false` | 兼容开关：true 且未配可信网段时只信任本机回环 |
-| `LCW_TRUSTED_PROXIES` | `127.0.0.1/32,172.16.0.0/12` | 可信反向代理 CIDR；不配置则不解析 XFF |
-| `LCW_SESSION_TTL_HOURS` | `168` | 会话空闲有效期 |
-| `LCW_SESSION_MAX_HOURS` | `720` | 会话绝对寿命（到期必须重新登录） |
+| `LCW_TRUSTED_PROXIES` | `172.20.0.1/32` | 可信反向代理 **具体网关**（尽量 /32）；不配置则不解析 XFF |
+| `LCW_SESSION_TTL_HOURS` | `72` | 会话空闲有效期 |
+| `LCW_SESSION_MAX_HOURS` | `336` | 会话绝对寿命（14 天，到期必须重新登录） |
 | `LCW_ROFL_MAX_KB` | `65536` | 录像上传上限 |
 | `LCW_UPLOAD_CONCURRENCY` | `2` | 录像解析全局并发 |
 | `LCW_MIGRATE_ON_START` | `true` | 生产建议 false，改用 `migrate` 子命令 |
@@ -106,9 +106,9 @@ certbot --nginx -d lol.example.com
 
 > `LCW_BASE_URL` 必须与浏览器地址一致（协议 + 域名），否则 QQ 回调和 Secure Cookie 会异常。
 >
-> 应用默认不信任 `X-Forwarded-For`。经反向代理部署时，把代理来源加入
-> `LCW_TRUSTED_PROXIES`（例如 `127.0.0.1/32,172.16.0.0/12`），
-> 否则限流与审计只能看到代理地址。
+> 应用默认不信任 `X-Forwarded-For`。经反向代理部署时，把**实际网关地址**加入
+> `LCW_TRUSTED_PROXIES`（例如 `172.20.0.1/32`）。不要使用整段私网，
+> 否则同网段主机可伪造 XFF 绕过限流。
 
 ## 4. QQ 互联配置（可选）
 
@@ -139,6 +139,9 @@ docker compose exec app /app/lol-civil-war group add 123456789 "周五内战群"
 # 查看数据库白名单与环境变量白名单
 docker compose exec app /app/lol-civil-war group list
 
+# 轮换群 key（旧链接立即失效）
+docker compose exec app /app/lol-civil-war group rotate 123456789
+
 # 移除
 docker compose exec app /app/lol-civil-war group remove 123456789
 ```
@@ -150,8 +153,8 @@ docker compose exec app /app/lol-civil-war group remove 123456789
 
 ### 数据库结构升级
 
-默认启动时自动建表/升级。若运行时账号没有 DDL 权限，先执行迁移，再以
-`LCW_MIGRATE_ON_START=false` 启动：
+生产配置使用 `LCW_MIGRATE_ON_START=false`：`scripts/deploy-remote.sh` 会在 `up -d` 前
+自动执行 `docker compose run --rm --no-deps app migrate`。手工部署时先执行迁移，再启动：
 
 ```bash
 # 新版本首次升级：用有 DDL 权限的账号执行一次

@@ -22,12 +22,19 @@ func TestLoadRejectsUnsafeDefaults(t *testing.T) {
 		wantSub string
 	}{
 		{name: "空数据库口令", env: map[string]string{}, wantSub: "LCW_DB_PASSWORD 为空"},
-		{name: "生产形态开发登录", env: map[string]string{
+		{name: "开发登录缺少 DevMode", env: map[string]string{
 			"LCW_DB_PASSWORD": "secret",
-			"LCW_BASE_URL":    "https://lol.example.com",
+			"LCW_BASE_URL":    "http://localhost:8080",
 			"LCW_DEV_LOGIN":   "true",
 			"LCW_DEV_MODE":    "false",
-		}, wantSub: "禁止开启开发登录"},
+		}, wantSub: "必须同时设置 LCW_DEV_MODE=true"},
+		{name: "开发登录监听全网卡", env: map[string]string{
+			"LCW_DB_PASSWORD": "secret",
+			"LCW_BASE_URL":    "http://localhost:8080",
+			"LCW_DEV_LOGIN":   "true",
+			"LCW_DEV_MODE":    "true",
+			"LCW_ADDR":        ":8080",
+		}, wantSub: "绑定回环地址"},
 		{name: "http 强制 Secure", env: map[string]string{
 			"LCW_DB_PASSWORD":   "secret",
 			"LCW_DEV_MODE":      "true",
@@ -74,6 +81,7 @@ func TestLoadDevModeAllowsEmptyPassword(t *testing.T) {
 	t.Setenv("LCW_DB_PASSWORD", "")
 	t.Setenv("LCW_DEV_MODE", "true")
 	t.Setenv("LCW_DEV_LOGIN", "true")
+	t.Setenv("LCW_ADDR", "127.0.0.1:8080")
 	t.Setenv("LCW_COOKIE_SECURE", "auto")
 	t.Setenv("LCW_TRUSTED_PROXIES", "")
 	t.Setenv("LCW_TRUST_PROXY", "false")

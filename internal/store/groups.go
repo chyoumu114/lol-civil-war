@@ -35,6 +35,24 @@ func (s *Store) GroupByID(ctx context.Context, id int64) (Group, error) {
 	return scanGroup(row)
 }
 
+// RotateGroupKey 轮换群公开 key：旧链接立即失效（V-01 的应急吊销手段）。
+func (s *Store) RotateGroupKey(ctx context.Context, number, newKey string) (Group, error) {
+	res, err := s.conn().ExecContext(ctx,
+		`UPDATE qq_groups SET public_key = ?, updated_at = ? WHERE qq_group_number = ?`,
+		newKey, millis(time.Now().UTC()), number)
+	if err != nil {
+		return Group{}, fmt.Errorf("轮换群 key 失败: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return Group{}, err
+	}
+	if affected == 0 {
+		return Group{}, ErrNotFound
+	}
+	return s.GroupByNumber(ctx, number)
+}
+
 // EnsureGroup 按群号取群，不存在则创建（白名单校验在 service 层）。
 func (s *Store) EnsureGroup(ctx context.Context, number, publicKey string) (Group, error) {
 	group, err := s.GroupByNumber(ctx, number)

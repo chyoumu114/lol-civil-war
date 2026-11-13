@@ -91,6 +91,23 @@ func upgradeSchema(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("回填会话绝对寿命失败: %w", err)
 	}
 
+	// sessions：令牌改为 SHA-256 摘要（V-04），同时把绝对寿命收敛到 14 天。
+	// 旧行是 40 字符明文令牌，迁移后旧 Cookie 仍可用（查询时同样做摘要）。
+	if _, err := db.ExecContext(ctx,
+		`UPDATE sessions SET id = SHA2(id, 256) WHERE id NOT REGEXP '^[0-9a-f]{64}$'`); err != nil {
+		return fmt.Errorf("会话令牌摘要迁移失败: %w", err)
+	}
+	const sessionMaxTTLMS = int64((14 * 24 * time.Hour) / time.Millisecond)
+	if _, err := db.ExecContext(ctx,
+		`UPDATE sessions SET absolute_expires_at = created_at + ?
+		 WHERE absolute_expires_at = 0 OR absolute_expires_at > created_at + ?`,
+		sessionMaxTTLMS, sessionMaxTTLMS); err != nil {
+		return fmt.Errorf("收敛会话绝对寿命失败: %w", err)
+	}
+	if err := ensureIndex(ctx, db, "sessions", "idx_sessions_user", "user_id"); err != nil {
+		return err
+	}
+
 	// rofl_uploads：录像去重改为按群隔离（L-01）。
 	if err := ensureColumn(ctx, db, "rofl_uploads", "group_id", "group_id BIGINT NULL"); err != nil {
 		return err
@@ -156,6 +173,25 @@ func dropIndexIfExists(ctx context.Context, db *sql.DB, table, index string) err
 	}
 	if _, err := db.ExecContext(ctx, "ALTER TABLE `"+table+"` DROP INDEX `"+index+"`"); err != nil {
 		return fmt.Errorf("删除索引 %s.%s 失败: %w", table, index, err)
+	}
+	return nil
+}
+
+func ensureIndex(ctx context.Context, db *sql.DB, table, index, columns string) error {
+	var count int
+	err := db.QueryRowContext(ctx, `
+		SELECT COUNT(*) FROM information_schema.statistics
+		WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?`,
+		table, index).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("检查索引 %s.%s 失败: %w", table, index, err)
+	}
+	if count > 0 {
+		return nil
+	}
+	if _, err := db.ExecContext(ctx,
+		"ALTER TABLE `"+table+"` ADD INDEX `"+index+"` ("+columns+")"); err != nil {
+		return fmt.Errorf("创建索引 %s.%s 失败: %w", table, index, err)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -63,7 +64,18 @@ func decodeJSON(w http.ResponseWriter, r *http.Request, dst any, maxBytes int64)
 		maxBytes = 1 << 20
 	}
 	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBytes))
-	return dec.Decode(dst)
+	if err := dec.Decode(dst); err != nil {
+		return err
+	}
+	// 拒绝尾随 JSON/垃圾数据（V-16），避免同一连接上夹带第二个对象。
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return errors.New("请求体包含多余数据")
+		}
+		return err
+	}
+	return nil
 }
 
 // isUnsafeMethod 判断是否需要 CSRF 校验。

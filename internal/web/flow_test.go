@@ -232,11 +232,16 @@ func TestCivilWarFlow(t *testing.T) {
 		t.Fatalf("缺少 CSRF 应返回 419，实际 %d: %s", status, body)
 	}
 
-	// 入口页引导流程：GET /api/meta 拿到 XSRF Cookie 后，POST resolve 必须成功
+	// V-01：匿名（即使带合法 CSRF）不能兑换群 key
+	if status, body := anon.raw("POST", "/api/groups/resolve", map[string]any{"groupNumber": testGroup}, true); status != http.StatusUnauthorized {
+		t.Fatalf("匿名 resolve 应返回 401，实际 %d: %s", status, body)
+	}
+
+	// 登录后 resolve 必须成功
 	bootstrap := newAPIClient(t, ts.URL)
-	bootstrap.do("GET", "/api/meta", nil, http.StatusOK)
+	bootstrap.devLogin("30000", "入口引导")
 	if bootstrap.csrf() == "" {
-		t.Fatal("/api/meta 未下发 XSRF-TOKEN Cookie")
+		t.Fatal("登录后缺少 XSRF-TOKEN Cookie")
 	}
 	resolved := bootstrap.do("POST", "/api/groups/resolve", map[string]any{"groupNumber": testGroup}, http.StatusOK)
 	if resolved["key"] == nil || resolved["key"] == "" {
@@ -250,7 +255,7 @@ func TestCivilWarFlow(t *testing.T) {
 	}
 
 	// 白名单外拒绝：统一用中性 404，不暴露“是否在白名单”的差异（L-06）
-	whitelist := anon.do("POST", "/api/groups/resolve", map[string]any{"groupNumber": "999999999"}, http.StatusNotFound)
+	whitelist := bootstrap.do("POST", "/api/groups/resolve", map[string]any{"groupNumber": "999999999"}, http.StatusNotFound)
 	if whitelist["message"] == nil {
 		t.Fatalf("白名单外响应异常: %v", whitelist)
 	}
@@ -283,6 +288,11 @@ func TestCivilWarFlow(t *testing.T) {
 	eventID := int64(event["id"].(float64))
 	if event["status"] != "open" {
 		t.Fatalf("组织状态 = %v", event["status"])
+	}
+
+	// V-07：超大 page 不得 panic（应钳制后正常返回）
+	if status, body := organizer.raw("GET", fmt.Sprintf("/api/groups/%s/events?page=999999999999999999", key), nil, false); status != http.StatusOK {
+		t.Fatalf("超大 page 应被钳制，实际 %d: %s", status, body)
 	}
 
 	// 全部报名
@@ -457,7 +467,7 @@ func TestDatabaseWhitelist(t *testing.T) {
 	}
 
 	client := newAPIClient(t, ts.URL)
-	client.do("GET", "/api/meta", nil, http.StatusOK)
+	client.devLogin("30009", "白名单测试")
 	resolved := client.do("POST", "/api/groups/resolve", map[string]any{"groupNumber": number}, http.StatusOK)
 	if key, _ := resolved["key"].(string); key == "" {
 		t.Fatalf("数据库白名单群未返回 key: %v", resolved)
@@ -470,6 +480,42 @@ func TestDatabaseWhitelist(t *testing.T) {
 	status, body := client.raw("POST", "/api/groups/resolve", map[string]any{"groupNumber": number}, true)
 	if status != http.StatusNotFound {
 		t.Fatalf("移除白名单后应返回 404，实际 %d: %s", status, body)
+	}
+}
+
+// TestGroupKeyRotation 验证 V-01 的应急吊销：轮换后旧 key 立即失效。
+func TestGroupKeyRotation(t *testing.T) {
+	ts, st := newTestServer(t)
+	client := newAPIClient(t, ts.URL)
+	client.devLogin("30010", "轮换测试")
+	oldKey := client.resolveGroup()
+
+	group, err := st.RotateGroupKey(context.Background(), testGroup, "rotated-public-key")
+	if err != nil {
+		t.Fatalf("轮换 key 失败: %v", err)
+	}
+	if group.PublicKey != "rotated-public-key" {
+		t.Fatalf("轮换后的 key = %q", group.PublicKey)
+	}
+	resolved := client.do("POST", "/api/groups/resolve", map[string]any{"groupNumber": testGroup}, http.StatusOK)
+	if resolved["key"] != "rotated-public-key" {
+		t.Fatalf("resolve 应返回新 key: %v", resolved)
+	}
+	status, _ := client.raw("GET", "/api/groups/"+oldKey, nil, false)
+	if status != http.StatusNotFound {
+		t.Fatalf("旧 key 应立即失效，实际 %d", status)
+	}
+}
+
+// TestLogoutAll 验证 V-04：可撤销当前账号全部会话。
+func TestLogoutAll(t *testing.T) {
+	ts, _ := newTestServer(t)
+	client := newAPIClient(t, ts.URL)
+	client.devLogin("30011", "全局登出")
+	client.do("POST", "/auth/logout-all", nil, http.StatusOK)
+	me := client.do("GET", "/api/me", nil, http.StatusOK)
+	if me["authenticated"] != false {
+		t.Fatalf("全局登出后仍处于登录态: %v", me)
 	}
 }
 
@@ -763,7 +809,7 @@ func TestQQCompleteFlow(t *testing.T) {
 		t.Fatalf("QQ 首次注册的群昵称异常: %v", qqMember["nickname"])
 	}
 
-	// 4) 旧数据账号（有 openid、无邮箱密码）→ 邮箱密码补到同一个账号
+	// 4) V-12：旧的“补全邮箱密码”流程必须拒绝，不能无原密码重置账号
 	legacyOpenID := "legacy-openid"
 	legacy, err := st.CreateUser(ctx, "U00000001", nil, nil, &legacyOpenID, "旧账号", nil, false)
 	if err != nil {
@@ -772,15 +818,15 @@ func TestQQCompleteFlow(t *testing.T) {
 	legacyID := legacy.ID
 	fourth := newAPIClient(t, ts.URL)
 	setPendingQQ(t, st, fourth, legacyOpenID, "旧账号", &legacyID)
-	fourth.do("POST", "/api/auth/qq/complete", map[string]any{
+	status, _ = fourth.raw("POST", "/api/auth/qq/complete", map[string]any{
 		"email": "legacy@example.com", "password": "password123",
-	}, http.StatusOK)
-	legacyAfter, err := st.UserByID(ctx, legacyID)
-	if err != nil || legacyAfter.Email == nil || *legacyAfter.Email != "legacy@example.com" {
-		t.Fatalf("旧账号补全邮箱失败: %+v err=%v", legacyAfter, err)
+	}, true)
+	if status != http.StatusBadRequest {
+		t.Fatalf("旧 QQ 补全流程应被拒绝，实际 %d", status)
 	}
-	if legacyAfter.UserNo != "U00000001" {
-		t.Fatalf("旧账号 user_no 被改变: %s", legacyAfter.UserNo)
+	legacyAfter, err := st.UserByID(ctx, legacyID)
+	if err != nil || legacyAfter.Email != nil {
+		t.Fatalf("旧账号邮箱不应被写入: %+v err=%v", legacyAfter, err)
 	}
 }
 

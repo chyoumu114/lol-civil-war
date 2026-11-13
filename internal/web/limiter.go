@@ -8,6 +8,13 @@ import (
 
 // limiter 是进程内固定窗口限流器（单实例部署足够）。
 // 说明：所有桶都是进程内状态，重启即清空；多副本部署需改用共享存储。
+const (
+	// 桶数量上限与固定 TTL：避免海量唯一 key（伪造邮箱/XFF）把内存撑爆（V-06）。
+	limiterMaxKeys    = 50_000
+	limiterBucketTTL  = 24 * time.Hour
+	limiterPruneEvery = time.Minute
+)
+
 type limiter struct {
 	mu       sync.Mutex
 	buckets  map[string]*bucket
@@ -28,7 +35,7 @@ func (l *limiter) allow(key string, limit int, window time.Duration) (bool, int)
 	now := time.Now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.pruneLocked(now, window)
+	l.pruneLocked(now)
 
 	b, ok := l.buckets[key]
 	if !ok || now.Sub(b.start) >= window {
@@ -48,7 +55,7 @@ func (l *limiter) blocked(key string, limit int, window time.Duration) (bool, in
 	now := time.Now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.pruneLocked(now, window)
+	l.pruneLocked(now)
 
 	b, ok := l.buckets[key]
 	if !ok || now.Sub(b.start) >= window {
@@ -65,7 +72,7 @@ func (l *limiter) hit(key string, window time.Duration) {
 	now := time.Now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.pruneLocked(now, window)
+	l.pruneLocked(now)
 
 	b, ok := l.buckets[key]
 	if !ok || now.Sub(b.start) >= window {
@@ -82,17 +89,28 @@ func (l *limiter) clear(key string) {
 	delete(l.buckets, key)
 }
 
-// pruneLocked 顺带清理长时间不用的 key，避免内存无限增长。
-func (l *limiter) pruneLocked(now time.Time, window time.Duration) {
-	if now.Sub(l.lastSwap) <= 10*time.Minute {
+// pruneLocked 每分钟按固定 TTL 清理一次，并在 key 数超限时强制淘汰。
+// 不能再用“当前调用的 window”清理，否则混合窗口下部分 key 永远不回收。
+func (l *limiter) pruneLocked(now time.Time) {
+	if now.Sub(l.lastSwap) >= limiterPruneEvery {
+		for k, b := range l.buckets {
+			if now.Sub(b.start) > limiterBucketTTL {
+				delete(l.buckets, k)
+			}
+		}
+		l.lastSwap = now
+	}
+	if len(l.buckets) <= limiterMaxKeys {
 		return
 	}
-	for k, b := range l.buckets {
-		if now.Sub(b.start) > window {
-			delete(l.buckets, k)
+	// 超限时随机淘汰到 90%，保证内存有硬上限；被淘汰的 key 只是失去历史计数。
+	target := limiterMaxKeys * 9 / 10
+	for k := range l.buckets {
+		if len(l.buckets) <= target {
+			break
 		}
+		delete(l.buckets, k)
 	}
-	l.lastSwap = now
 }
 
 func retrySeconds(now, start time.Time, window time.Duration) int {

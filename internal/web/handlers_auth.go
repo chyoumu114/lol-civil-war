@@ -24,6 +24,10 @@ const (
 	registerIPWindow    = 10 * time.Minute
 	registerEmailLimit  = 5
 	registerEmailWindow = time.Hour
+
+	// 单 IP 登录失败总量（跨账号），配合邮箱级退避抵御撞库（V-06）。
+	loginIPFailLimit  = 50
+	loginIPFailWindow = 10 * time.Minute
 )
 
 type emailAuthPayload struct {
@@ -105,10 +109,18 @@ func (s *Server) handleEmailLogin(w http.ResponseWriter, r *http.Request) {
 	if s.loginBlocked(w, r, payload.Email) {
 		return
 	}
+	ip := clientIP(r, s.Cfg.TrustedProxies)
+	if blocked, retry := s.limiter.blocked("login-ip:"+ip, loginIPFailLimit, loginIPFailWindow); blocked {
+		w.Header().Set("Retry-After", itoa(retry))
+		auditLog("login_ip_blocked", "ip", ip)
+		writeMessage(w, http.StatusTooManyRequests, "尝试次数过多，请稍后再试")
+		return
+	}
 	user, err := s.App.LoginEmail(r.Context(), payload.Email, payload.Password)
 	if err != nil {
 		s.limiter.hit(loginKey(payload.Email), loginFailWindow)
-		auditLog("login_failed", "email", maskEmail(payload.Email), "ip", clientIP(r, s.Cfg.TrustedProxies))
+		s.limiter.hit("login-ip:"+ip, loginIPFailWindow)
+		auditLog("login_failed", "email", maskEmail(payload.Email), "ip", ip)
 		writeError(w, err)
 		return
 	}
@@ -314,6 +326,22 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 		auditLog("logout", "userId", *state.session.UserID, "ip", clientIP(r, s.Cfg.TrustedProxies))
 	}
 	writeMessage(w, http.StatusOK, "已退出登录")
+}
+
+// handleLogoutAll 撤销当前账号的全部会话（V-04）。
+func (s *Server) handleLogoutAll(w http.ResponseWriter, r *http.Request) {
+	userID, ok := userIDFrom(r)
+	if !ok {
+		writeError(w, service.ErrUnauthorized())
+		return
+	}
+	if err := s.App.St.RevokeUserSessions(r.Context(), userID); err != nil {
+		writeError(w, err)
+		return
+	}
+	s.sessions.clearCookies(w)
+	auditLog("logout_all", "userId", userID, "ip", clientIP(r, s.Cfg.TrustedProxies))
+	writeMessage(w, http.StatusOK, "已退出全部设备")
 }
 
 // loginJSON 登录成功后重建会话并返回当前账号。

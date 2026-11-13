@@ -45,7 +45,7 @@
                 <a-input v-model="registerEmail" placeholder="邮箱" allow-clear>
                   <template #prefix><icon-email /></template>
                 </a-input>
-                <a-input-password v-model="registerPassword" placeholder="密码（至少 8 位）">
+                <a-input-password v-model="registerPassword" placeholder="密码（至少 10 位）">
                   <template #prefix><icon-lock /></template>
                 </a-input-password>
                 <a-input-password v-model="registerConfirm" placeholder="确认密码" @press-enter="doRegister">
@@ -79,7 +79,7 @@
             <a-input v-model="registerEmail" placeholder="邮箱" allow-clear>
               <template #prefix><icon-email /></template>
             </a-input>
-            <a-input-password v-model="registerPassword" placeholder="密码（至少 8 位）">
+            <a-input-password v-model="registerPassword" placeholder="密码（至少 10 位）">
               <template #prefix><icon-lock /></template>
             </a-input-password>
             <a-input-password v-model="registerConfirm" placeholder="确认密码" @press-enter="doRegister">

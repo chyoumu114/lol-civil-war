@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chyoumu114/lol-civil-war/internal/service"
 	"github.com/chyoumu114/lol-civil-war/internal/store"
@@ -14,6 +15,18 @@ import (
 var groupNumberPattern = regexp.MustCompile(`^\d{5,12}$`)
 
 func (s *Server) handleGroupResolve(w http.ResponseWriter, r *http.Request) {
+	// V-01：群号→public_key 的兑换必须登录，避免匿名枚举白名单并获取租户 key。
+	userID, ok := userIDFrom(r)
+	if !ok {
+		writeError(w, service.ErrUnauthorized())
+		return
+	}
+	if allowed, retry := s.limiter.allow("resolve-user:"+itoa64(userID), 20, time.Minute); !allowed {
+		w.Header().Set("Retry-After", itoa(retry))
+		auditLog("rate_limited", "scope", "resolve-user", "userId", userID)
+		writeMessage(w, http.StatusTooManyRequests, "操作过于频繁，请稍后再试")
+		return
+	}
 	var payload struct {
 		GroupNumber string `json:"groupNumber"`
 	}

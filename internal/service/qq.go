@@ -80,27 +80,25 @@ func (c *QQClient) Exchange(ctx context.Context, code string) (QQProfile, error)
 }
 
 func (c *QQClient) fetchAccessToken(ctx context.Context, code string) (string, error) {
-	q := url.Values{}
-	q.Set("grant_type", "authorization_code")
-	q.Set("client_id", c.appID)
-	q.Set("client_secret", c.appKey)
-	q.Set("code", code)
-	q.Set("redirect_uri", c.redirect)
-	q.Set("fmt", "json")
+	// client_secret 必须走 POST body，不能进入 URL/代理日志（V-10）。
+	form := url.Values{}
+	form.Set("grant_type", "authorization_code")
+	form.Set("client_id", c.appID)
+	form.Set("client_secret", c.appKey)
+	form.Set("code", code)
+	form.Set("redirect_uri", c.redirect)
+	form.Set("fmt", "json")
 
-	body, status, err := c.get(ctx, "https://graph.qq.com/oauth2.0/token?"+q.Encode())
+	body, status, err := c.postForm(ctx, "https://graph.qq.com/oauth2.0/token", form)
 	if err != nil || status/100 != 2 {
-		return "", NewError(502, "QQ 登录失败：无法获取 access_token")
+		return "", NewError(502, "QQ 登录失败，请重新授权")
 	}
 	data := decodeMaybeJSONP(body)
 	if token := firstString(data, "access_token"); token != "" {
 		return token, nil
 	}
-	message := firstString(data, "error_description", "error")
-	if message == "" {
-		message = "授权码无效或已过期"
-	}
-	return "", NewError(502, "QQ 登录失败："+message)
+	// 不向上游错误文案原样回显（可能包含内部细节）。
+	return "", NewError(502, "QQ 登录失败，请重新授权")
 }
 
 func (c *QQClient) fetchOpenID(ctx context.Context, token string) (string, error) {
@@ -140,6 +138,22 @@ func (c *QQClient) fetchUserInfo(ctx context.Context, token, openid string) (map
 		return nil, NewError(502, "QQ 登录失败：无法获取用户信息")
 	}
 	return data, nil
+}
+
+func (c *QQClient) postForm(ctx context.Context, rawURL string, form url.Values) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rawURL,
+		strings.NewReader(form.Encode()))
+	if err != nil {
+		return nil, 0, err
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	return body, resp.StatusCode, err
 }
 
 func (c *QQClient) get(ctx context.Context, rawURL string) ([]byte, int, error) {

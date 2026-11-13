@@ -140,13 +140,13 @@ The application is configured through environment variables (or `.env`). Compose
 | `LCW_QQ_APP_ID` | empty | Optional QQ Connect AppID (mainland China); enables quick login when set |
 | `LCW_QQ_APP_KEY` | empty | Optional QQ Connect AppKey (mainland China) |
 | `LCW_QQ_REDIRECT_URI` | `${BASE_URL}/auth/qq/callback` | QQ callback URL |
-| `LCW_SESSION_TTL_HOURS` | `168` | Idle session lifetime |
-| `LCW_SESSION_MAX_HOURS` | `720` | Absolute session lifetime (re-login required) |
+| `LCW_SESSION_TTL_HOURS` | `72` | Idle session lifetime |
+| `LCW_SESSION_MAX_HOURS` | `336` | Absolute session lifetime (14 days, re-login required) |
 | `LCW_ROFL_MAX_KB` | `65536` | Replay upload limit (64 MB) |
 | `LCW_UPLOAD_CONCURRENCY` | `2` | Global replay parsing concurrency |
 | `LCW_COOKIE_SECURE` | `auto` | With `auto`, derived from the `LCW_BASE_URL` scheme |
 | `LCW_TRUST_PROXY` | `false` | Legacy switch; true with no trusted CIDRs trusts loopback only |
-| `LCW_TRUSTED_PROXIES` | empty | Trusted proxy CIDRs, e.g. `127.0.0.1/32,172.16.0.0/12` |
+| `LCW_TRUSTED_PROXIES` | empty | Trusted proxy gateway, e.g. `172.20.0.1/32`; avoid broad ranges |
 | `LCW_MIGRATE_ON_START` | `true` | Auto-migrate on start; prefer false + `migrate` in production |
 | `LCW_CHAMPION_ICON_DIR` | `${DATA_DIR}/champions` | Local champion avatar directory |
 | `LCW_DDRAGON_VERSION` | empty (auto-detect) | DataDragon version; the deployment template pins `16.20.1` |

@@ -42,7 +42,7 @@ type sessionManager struct {
 func newSessionManager(st *store.Store, idleTTL, maxTTL time.Duration, secure bool) *sessionManager {
 	// 测试或旧配置可能直接构造 Config（不走 Load），这里做一次兜底，避免 0 值让会话立即过期。
 	if idleTTL <= 0 {
-		idleTTL = 168 * time.Hour
+		idleTTL = 72 * time.Hour
 	}
 	if maxTTL < idleTTL {
 		maxTTL = idleTTL

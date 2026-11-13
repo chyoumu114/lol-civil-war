@@ -306,6 +306,16 @@ func (a *App) ImportRofl(ctx context.Context, event store.Event, gameNo int, act
 	if err != nil {
 		return nil, err
 	}
+	// V-09：同一录像已在同群其他组织使用时拒绝，避免跨组织抢占归属。
+	if upload.MatchID != nil && *upload.MatchID != found.ID {
+		other, otherErr := a.St.MatchByID(ctx, *upload.MatchID)
+		if otherErr != nil && !IsNotFound(otherErr) {
+			return nil, otherErr
+		}
+		if otherErr == nil && other.EventID != found.EventID {
+			return nil, ErrConflict("该录像已在同一群的其他组织中上传，请勿跨组织重复使用")
+		}
+	}
 	if upload.MatchID == nil || *upload.MatchID != found.ID || upload.FileName != file.Name {
 		if err := a.St.UpdateRoflOwner(ctx, upload.ID, event.GroupID, found.ID, file.Name, file.Size); err != nil {
 			return nil, err

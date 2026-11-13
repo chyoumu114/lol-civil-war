@@ -86,21 +86,26 @@ func (a *App) ListEvents(ctx context.Context, group store.Group, status string, 
 	}
 
 	total := len(items)
+	const maxPage = 1_000_000
 	if page < 1 {
 		page = 1
+	}
+	if page > maxPage {
+		page = maxPage
 	}
 	if pageSize < 1 {
 		pageSize = 1
 	}
-	start := (page - 1) * pageSize
-	if start > total {
-		start = total
+	// 用 int64 计算，避免超大 page 触发整数溢出（V-07）。
+	start64 := int64(page-1) * int64(pageSize)
+	if start64 > int64(total) {
+		start64 = int64(total)
 	}
-	end := start + pageSize
-	if end > total {
-		end = total
+	end64 := start64 + int64(pageSize)
+	if end64 > int64(total) {
+		end64 = int64(total)
 	}
-	paged := items[start:end]
+	paged := items[int(start64):int(end64)]
 	if paged == nil {
 		paged = []EventListItem{}
 	}

@@ -115,6 +115,7 @@ func (s *Server) routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /auth/qq/bind", authLimit(s.handleQQBindRedirect))
 	mux.HandleFunc("GET /auth/dev", authLimit(s.handleDevLogin))
 	mux.HandleFunc("POST /auth/logout", s.handleLogout)
+	mux.HandleFunc("POST /auth/logout-all", s.handleLogoutAll)
 
 	// 群内业务
 	mux.HandleFunc("GET /api/groups/{group}", s.groupScoped(s.handleGroupShow))

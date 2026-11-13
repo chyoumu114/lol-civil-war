@@ -134,13 +134,13 @@ http://localhost:8080/auth/dev?qq=10001&nickname=测试玩家&redirect=/
 | `LCW_QQ_APP_ID` | 空 | 可选：QQ 互联 AppID，配置后才启用快捷登录 |
 | `LCW_QQ_APP_KEY` | 空 | 可选：QQ 互联 AppKey |
 | `LCW_QQ_REDIRECT_URI` | `${BASE_URL}/auth/qq/callback` | QQ 回调地址 |
-| `LCW_SESSION_TTL_HOURS` | `168` | 会话空闲有效期 |
-| `LCW_SESSION_MAX_HOURS` | `720` | 会话绝对寿命（到期必须重新登录） |
+| `LCW_SESSION_TTL_HOURS` | `72` | 会话空闲有效期 |
+| `LCW_SESSION_MAX_HOURS` | `336` | 会话绝对寿命（14 天，到期必须重新登录） |
 | `LCW_ROFL_MAX_KB` | `65536` | 录像上传上限（64MB） |
 | `LCW_UPLOAD_CONCURRENCY` | `2` | 录像解析全局并发 |
 | `LCW_COOKIE_SECURE` | `auto` | `auto` 时按 `LCW_BASE_URL` 是否为 https 决定 |
 | `LCW_TRUST_PROXY` | `false` | 兼容开关：true 且未配可信网段时只信任回环 |
-| `LCW_TRUSTED_PROXIES` | 空 | 可信代理 CIDR，例如 `127.0.0.1/32,172.16.0.0/12` |
+| `LCW_TRUSTED_PROXIES` | 空 | 可信代理网关，例如 `172.20.0.1/32`；不要填大网段 |
 | `LCW_MIGRATE_ON_START` | `true` | 启动时自动建表/升级；生产建议 false + `migrate` |
 | `LCW_CHAMPION_ICON_DIR` | `${DATA_DIR}/champions` | 本地英雄头像目录 |
 | `LCW_DDRAGON_VERSION` | 空（自动探测） | DataDragon 英雄数据版本；部署模板默认固定 16.20.1 |

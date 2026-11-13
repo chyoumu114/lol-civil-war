@@ -2,13 +2,24 @@ package store
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 )
 
+// hashSessionID 把 Cookie 中的明文令牌映射为库内摘要（V-04）。
+// 返回值长度固定 64 位十六进制，与 sessions.id 列一致。
+func hashSessionID(token string) string {
+	sum := sha256.Sum256([]byte(token))
+	return hex.EncodeToString(sum[:])
+}
+
 // GetSession 读取会话；过期或不存在返回 ErrNotFound。
+// id 是 Cookie 中的明文令牌，库内按 SHA-256 查询；返回的 Session.ID 仍是明文，
+// 供 web 层继续写入 Cookie / 续期使用。
 func (s *Store) GetSession(ctx context.Context, id string) (Session, error) {
 	var (
 		sess        Session
@@ -23,7 +34,7 @@ func (s *Store) GetSession(ctx context.Context, id string) (Session, error) {
 		SELECT id, user_id, csrf, oauth_state, oauth_redirect,
 		       qq_pending_openid, qq_pending_user_id, qq_pending_name, qq_pending_avatar,
 		       qq_bind_user_id, expires_at, absolute_expires_at, created_at
-		FROM sessions WHERE id = ?`, id).
+		FROM sessions WHERE id = ?`, hashSessionID(id)).
 		Scan(&sess.ID, &userID, &sess.CSRF, &sess.OAuthState, &sess.OAuthRedirect,
 			&sess.QQPendingOpenID, &pendingUser, &sess.QQPendingName, &sess.QQPendingAvatar,
 			&bindUser, &expires, &absolute, &created)
@@ -50,6 +61,8 @@ func (s *Store) GetSession(ctx context.Context, id string) (Session, error) {
 		sess.AbsoluteExpiresAt = fromMillis(absolute)
 	}
 	sess.CreatedAt = fromMillis(created)
+	// 对外仍暴露调用方传入的明文令牌。
+	sess.ID = id
 	return sess, nil
 }
 
@@ -91,7 +104,7 @@ func (s *Store) PutSession(ctx context.Context, sess Session) error {
 			qq_bind_user_id = new.qq_bind_user_id,
 			expires_at = new.expires_at,
 			absolute_expires_at = new.absolute_expires_at`,
-		sess.ID, userID, sess.CSRF, sess.OAuthState, sess.OAuthRedirect,
+		hashSessionID(sess.ID), userID, sess.CSRF, sess.OAuthState, sess.OAuthRedirect,
 		sess.QQPendingOpenID, pendingUser, sess.QQPendingName, sess.QQPendingAvatar,
 		bindUser, millis(sess.ExpiresAt), absolute, created)
 	if err != nil {
@@ -100,9 +113,15 @@ func (s *Store) PutSession(ctx context.Context, sess Session) error {
 	return nil
 }
 
-// DeleteSession 删除会话。
+// DeleteSession 删除会话（id 为明文令牌）。
 func (s *Store) DeleteSession(ctx context.Context, id string) error {
-	_, err := s.conn().ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, id)
+	_, err := s.conn().ExecContext(ctx, `DELETE FROM sessions WHERE id = ?`, hashSessionID(id))
+	return err
+}
+
+// RevokeUserSessions 撤销某账号的全部会话（全局登出）。
+func (s *Store) RevokeUserSessions(ctx context.Context, userID int64) error {
+	_, err := s.conn().ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, userID)
 	return err
 }
 

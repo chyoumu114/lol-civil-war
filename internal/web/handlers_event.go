@@ -19,6 +19,11 @@ func (s *Server) handleEventList(w http.ResponseWriter, r *http.Request, group s
 	if page < 1 {
 		page = 1
 	}
+	// V-07：防止 (page-1)*pageSize 整数溢出导致切片越界 panic。
+	const maxPage = 1_000_000
+	if page > maxPage {
+		page = maxPage
+	}
 	pageSize := 20
 	if raw := query.Get("page_size"); raw != "" {
 		if value, err := strconv.Atoi(raw); err == nil {

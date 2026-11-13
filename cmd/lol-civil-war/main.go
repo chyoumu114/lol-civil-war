@@ -138,12 +138,11 @@ func provisionEnvGroups(st *store.Store, numbers []string) {
 			slog.Warn("检查环境白名单群失败", "group", number, "error", err)
 			continue
 		}
-		group, err := st.EnsureGroup(ctx, number, rand.Text())
-		if err != nil {
+		if _, err := st.EnsureGroup(ctx, number, rand.Text()); err != nil {
 			slog.Error("为环境白名单群建档失败", "group", number, "error", err)
 			continue
 		}
-		slog.Info("已为环境白名单群建档", "group", number, "key", group.PublicKey)
+		slog.Info("已为环境白名单群建档", "group", number)
 	}
 }
 

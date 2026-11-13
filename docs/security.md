@@ -1,6 +1,6 @@
 # 安全加固记录
 
-本文记录 2026-11 依据三轮安全审计完成的修复与上线记录。审计原文（`shenji.md`、`lol-civil-war-security-audit-round3.md`）只保存在本机，未随仓库提交。
+本文记录 2026-11 依据四轮安全审计完成的修复与上线记录。审计原文（`shenji.md`、`lol-civil-war-security-audit-round3.md`）只保存在本机，未随仓库提交。
 
 ## 1. 修复清单
 
@@ -38,7 +38,10 @@
 3. **白名单建档**：`group add <群号>` 现在会同时创建群记录并打印 `key`；`group list` 可查看。
 4. **密码策略**：注册/补全密码至少 10 位（登录不校验旧密码长度）。
 5. **迁移**：默认启动时自动迁移；生产建议预执行 `lol-civil-war migrate`，并设置 `LCW_MIGRATE_ON_START=false`，运行时账号只保留 `SELECT/INSERT/UPDATE/DELETE`。
-6. **反向代理**：使用 Nginx/Caddy 时配置 `LCW_TRUSTED_PROXIES`，否则所有请求的限流键都会退化为代理地址（可用，但粒度变粗）。示例见 `deploy/.env.example`。
+6. **反向代理**：使用 Nginx/Caddy 时配置 `LCW_TRUSTED_PROXIES` 为**实际网关 /32**；宽网段会让同网段主机伪造 XFF。示例见 `deploy/.env.example`。
+7. **入口登录**（V-01）：`/civil-war` 入口页先登录再输入群号；`POST /api/groups/resolve` 未登录返回 401。群 key 仍是可分享的能力令牌，可用 `group rotate <群号>` 吊销旧链接。
+8. **会话寿命**（V-04）：默认空闲 72 小时、绝对 336 小时（14 天）；库内只存令牌 SHA-256，旧 Cookie 在迁移后仍有效；`POST /auth/logout-all` 可撤销该账号全部会话。
+9. **生产迁移**（V-05）：`.env.prod` 使用 `LCW_MIGRATE_ON_START=false`，`deploy-remote.sh` 会在启动前执行一次 `migrate`。
 
 ## 3. 第三轮回归修复（2026-11-10）
 
@@ -62,16 +65,41 @@
 
 新增测试：CSRF 登录态拒绝双提交、注册 IP 限流、登录失败三路径一致性、玩家条目上限、QQ 脱敏。
 
-## 4. 残留风险（未在本轮代码中完全消除）
+## 4. 第四轮审计修复（2026-11-14）
 
-- **注册接口仍会提示邮箱已注册**：已加 IP/邮箱计数与审计，但换邮箱批量探测仍可行。彻底消除需要邮箱验证码流程。
+第四轮审计（V-01～V-18）的重点是「群号 → 群 key」兑换模型与会话/代理/迁移纵深：
+
+| 编号 | 处理方式 | 主要位置 |
+| --- | --- | --- |
+| V-01 | `POST /api/groups/resolve` **要求登录**，并按用户 20 次/分限流；入口页改为先登录再输入群号；新增 `group rotate <群号>` 轮换/吊销 key | `web/handlers_group.go`、`web/src/views/CivilWarEntryView.vue`、`cmd/lol-civil-war/cli.go`、`store/groups.go` |
+| V-02 | `LCW_DEV_LOGIN=true` 必须同时 `LCW_DEV_MODE=true` 且 `LCW_ADDR` 绑定回环地址，不再只看 `LCW_BASE_URL` | `config/config.go` |
+| V-03 | 生产可信代理收敛为实际网关 `172.20.0.1/32`；配置加载时对宽于 `/24` 的 IPv4 信任网段发出告警；文档删除宽网段示例 | `deploy/.env.prod`、`config/config.go`、`deploy/.env.example`、`docs/deploy.md` |
+| V-04 | 会话令牌库内只存 **SHA-256**；新增 `sessions.user_id` 索引与 `POST /auth/logout-all`；绝对寿命默认 14 天、空闲 3 天；迁移自动哈希存量行（旧 Cookie 仍可用） | `store/sessions.go`、`store/upgrade.go`、`web/handlers_auth.go`、`config/config.go` |
+| V-05 | 生产 `LCW_MIGRATE_ON_START=false`；`deploy-remote.sh` 在 `up -d` 前执行 `docker compose run --rm --no-deps app migrate` | `deploy/.env.prod`、`scripts/deploy-remote.sh` |
+| V-06 | limiter 增加 5 万 key 硬上限与固定 24h TTL（不再按调用窗口清理）；新增单 IP 跨账号登录失败总量（50 次/10 分钟） | `web/limiter.go`、`web/handlers_auth.go` |
+| V-07 | 分页 `page` 钳制到 1,000,000 并用 int64 计算，修复超大 page 的切片越界 panic | `web/handlers_event.go`、`service/event.go` |
+| V-08 | 启动日志不再打印群 key；新增轮换命令 | `cmd/lol-civil-war/main.go`、`cli.go` |
+| V-09 | 同一群内同一录像跨组织重复上传改为 409 拒绝，不再抢占归属 | `service/match.go` |
+| V-10 | QQ `client_secret` 改走 POST body；上游错误文案不再原样回显 | `service/qq.go` |
+| V-12 | 旧 QQ「补全邮箱密码」流程直接拒绝，堵住不校验原密码即可重置账号的遗留分支 | `service/auth.go` |
+| V-16 | `decodeJSON` 二次 Decode 校验 EOF，拒绝尾随 JSON/垃圾数据 | `web/response.go` |
+
+新增测试：匿名 resolve 返回 401、登录后 resolve/中性 404、超大 page 不 panic、key 轮换后旧 key 失效、全局登出、旧 QQ 补全被拒绝、DevLogin 监听/DevMode 自检。
+
+未在本轮处理、已明确接受的项：V-06 的注册邮箱 oracle（需邮箱验证码基础设施）、V-13 `XSRF-TOKEN` 改 `__Host-`（需前端 axios 同步）、V-14 状态变更审计全覆盖与告警、V-15 部署脚本/CI 供应链细节、V-17 头像 `img-src https:` 放宽、V-18 health/meta 信息最小化。
+
+## 5. 残留风险（未在本轮代码中完全消除）
+
+- **注册接口仍会提示邮箱已注册**：已加 IP/邮箱计数与审计，但换邮箱批量探测仍可行。彻底消除需要邮箱验证码流程（V-06 接受项）。
 - **ROFL 外层元数据仍整体 `json.Unmarshal`**：已把上限降到 8MB、`statsJson` 改流式解码并限制玩家条目；极端文件仍可能有数十 MB 峰值内存，但已受上传上限与全局并发约束。
 - **限流是单实例进程内状态**：重启清零、多副本不共享；多副本部署需换 Redis 等共享存储。
-- **CSRF**：有会话时严格绑定会话 Token；无会话（登录/注册/入口页）才使用双提交。`XSRF-TOKEN` 尚未改 `__Host-` 前缀（需前端 axios 同步改名），单域名部署下风险有限。
+- **CSRF**：有会话时严格绑定会话 Token；无会话（登录/注册/入口页）才使用双提交。`XSRF-TOKEN` 尚未改 `__Host-` 前缀（V-13，需前端 axios 同步改名），单域名部署下风险有限。
 - **`LCW_MIGRATE_ON_START` 默认仍为 true**：兼容旧部署；按上文关闭后才能真正做到运行时账号无 DDL 权限。
-- **审计日志覆盖关键事件但未做告警**：需要接入日志平台后配置增长率/失败率告警。
+- **审计日志覆盖关键事件但未做告警**：V-14 仍待补齐资料/报名/阵容/评分等状态变更并接入告警。
+- **部署与供应链**：`deploy-remote.sh` 仍使用 `StrictHostKeyChecking=accept-new` 与 root 部署，CI 工具仍为 `@latest`（V-15）；镜像关闭 provenance/SBOM。
+- **隐私/展示面**：CSP `img-src https:` 允许任意 HTTPS 头像（V-17）；`/api/health` 和 `/api/meta` 对匿名暴露版本与功能开关（V-18）。
 
-## 5. 验证
+## 6. 验证
 
 ```bash
 # 单元 + MySQL 集成测试（Go 1.26+；发布镜像用 Go 1.27.3）
@@ -93,10 +121,11 @@ lol-civil-war migrate
 - 旧库（缺 `group_id`、`absolute_expires_at`、旧 `uk_rofl_sha256`）迁移成功且幂等，同一录像可在第二个群独立去重；
 - 真实起服冒烟：环境变量白名单启动期建档、HTML 页面刷新会话 CSRF、登录态 `Cookie==Header` 返回 419、静态资源不下发 Cookie；
 - 线上 v0.5.1 验证：健康检查、CSP/HSTS、`__Host-lcw_session`、群解析 200/404、可信代理真实 IP、数据量不变。
+- 第四轮冒烟：匿名 resolve **401**、登录后 resolve 200、库内会话 id 为 64 位 SHA-256、全局登出后 `/api/me` 未登录、入口页 200；旧库迁移后会话 id 已哈希且 `idx_sessions_user` 存在。
 
 > 注意：本机若设置 `GOSUMDB=off`，`GOTOOLCHAIN=go1.26.0` 下载工具链会失败，需临时 `GOSUMDB=sum.golang.org`。
 
-## 6. 发布记录
+## 7. 发布记录
 
 | 版本 | 代码 | 镜像 | 上线时间 | 部署前备份 |
 | --- | --- | --- | --- | --- |

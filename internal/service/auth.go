@@ -105,6 +105,11 @@ func (a *App) CompleteQQ(ctx context.Context, pending PendingQQ, email, password
 	if strings.TrimSpace(pending.OpenID) == "" {
 		return store.User{}, NewError(400, "QQ 登录状态已失效，请重新发起快捷登录")
 	}
+	// V-12：旧版“补全邮箱密码”流程已停用。该分支不校验原密码即可重置账号口令，
+	// 属于遗留死代码；生产当前不会写入 QQPendingUserID，这里再兜底拒绝。
+	if pending.UserID > 0 {
+		return store.User{}, NewError(400, "旧的 QQ 补全流程已停用，请重新使用 QQ 快捷登录")
+	}
 	email, err := normalizeEmail(email)
 	if err != nil {
 		return store.User{}, err

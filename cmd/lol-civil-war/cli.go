@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"log/slog"
 	"os"
@@ -84,6 +85,24 @@ func runGroupCLI(args []string) int {
 			}
 		}
 
+	case "rotate", "reroll":
+		if len(args) < 2 {
+			printGroupUsage()
+			return 2
+		}
+		number := strings.TrimSpace(args[1])
+		if !groupNumberPattern.MatchString(number) {
+			fmt.Fprintln(os.Stderr, "群号必须是 5-12 位数字")
+			return 2
+		}
+		group, err := st.RotateGroupKey(ctx, number, rand.Text())
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "轮换群 key 失败: %v\n", err)
+			return 1
+		}
+		slog.Info("audit", "event", "group_key_rotate", "groupNumber", number)
+		fmt.Printf("已轮换群 %s 的 key：%s（旧链接立即失效）\n", number, group.PublicKey)
+
 	case "list", "ls":
 		numbers, err := st.AllowedGroupNumbers(ctx)
 		if err != nil {
@@ -139,6 +158,7 @@ func printGroupUsage() {
 	fmt.Fprintln(os.Stderr, `用法：
   lol-civil-war group add <群号> [备注]   # 添加白名单并建群（别名 allow）
   lol-civil-war group remove <群号>      # 移除白名单（别名 rm/deny）
+  lol-civil-war group rotate <群号>      # 轮换群 key（旧链接立即失效，别名 reroll）
   lol-civil-war group list               # 查看数据库白名单（别名 ls）
   lol-civil-war migrate                  # 建表/升级表结构后退出
 

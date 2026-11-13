@@ -36,9 +36,10 @@
 | GET | `/api/auth/callback` | 同上（QQ 后台兼容地址） |
 | GET | `/auth/qq/bind?redirect=/` | 已登录用户发起绑定 QQ；未登录 401 |
 | GET | `/api/auth/pending` | 兼容旧会话：查询待补全的 QQ 身份（新流程不再使用） |
-| POST | `/api/auth/qq/complete` | 兼容旧会话：补全邮箱密码（新流程不再使用） |
+| POST | `/api/auth/qq/complete` | 旧版补全流程已停用，固定返回 400；请重新使用 QQ 快捷登录 |
 | GET | `/auth/dev?qq=10001&nickname=测试&redirect=/` | 开发登录；`LCW_DEV_LOGIN=false` 时 404 |
 | POST | `/auth/logout` | 退出登录 |
+| POST | `/auth/logout-all` | 撤销当前账号全部会话（需登录 + CSRF） |
 
 `/api/me` 的 `user` 字段：
 
@@ -64,14 +65,14 @@ QQ 快捷登录流程：
 3. 没有账号则创建 QQ-only 账号（生成 `user_no`，不要求邮箱/密码）并登录；
 4. 不再跳转 `/qq-complete`。
 
-已有邮箱账号可以展开登录页的邮箱入口登录，再访问 `/auth/qq/bind` 绑定 QQ。`/api/auth/pending` 与 `/api/auth/qq/complete` 仅为旧会话兼容保留。
+已有邮箱账号可以展开登录页的邮箱入口登录，再访问 `/auth/qq/bind` 绑定 QQ。`/api/auth/pending` 仅为旧会话兼容保留；`/api/auth/qq/complete` 已停用并返回 400。
 
 ## 群
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| POST | `/api/groups/resolve` | 用群号换公开 key：`{"groupNumber":"123456789"}` → `{"key":"...","name":null}`；未开通统一 404 |
-| GET | `/api/groups/{group}` | 群信息 + 我的资料 + meta |
+| POST | `/api/groups/resolve` | **需登录**；用群号换公开 key：`{"groupNumber":"123456789"}` → `{"key":"...","name":null}`；未登录 401，未开通统一 404 |
+| GET | `/api/groups/{group}` | 群信息 + 我的资料 + meta（`group` 为公开 key，需登录） |
 | PUT | `/api/groups/{group}/profile` | 保存群内资料 |
 
 资料请求：
