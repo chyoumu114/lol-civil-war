@@ -12,8 +12,8 @@ COPY web/ ./
 RUN npm run build
 
 # ---------- Go 构建 ----------
-FROM golang:1.27.3-alpine AS build
-RUN GOTOOLCHAIN=local go version | grep -q 'go1.27.3'
+FROM golang:1.27.4-alpine AS build
+RUN GOTOOLCHAIN=local go version | grep -q 'go1.27.4'
 WORKDIR /src
 ARG VERSION=dev
 ARG GOPROXY=https://proxy.golang.org,direct

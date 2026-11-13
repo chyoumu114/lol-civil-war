@@ -48,7 +48,7 @@
 
 | 编号 | 处理方式 | 主要位置 |
 | --- | --- | --- |
-| I-05 | `go.mod` 最低版本从 `1.27.3` 降到 `1.26.0`（`golang.org/x/crypto v0.58` 的最低要求）；CI 固定 Go 1.27.3（与发布镜像一致），go.mod 只声明最低语言版本 1.26.0；安全门禁可真正执行 | `go.mod`、`.github/workflows/ci.yml`、`deploy/Dockerfile` |
+| I-05 | 构建工具链统一为 **Go 1.27.4**：`go.mod`、CI `setup-go`、`deploy/Dockerfile` 三处一致（1.27.4 修复 `GO-2026-6859`：net/http `MaxBytesReader` 头部竞争导致进程崩溃）。`govulncheck` 会按 `go.mod` 的 go 指令判定标准库版本，写低版本会按旧标准库误报 | `go.mod`、`.github/workflows/ci.yml`、`deploy/Dockerfile` |
 | N-6 | 有会话时 **只接受会话绑定的 CSRF Token**，删除双提交回退；SPA/HTML 页面也加载会话并刷新 XSRF Cookie，避免误删 Cookie 后无法恢复 | `internal/web/session.go` |
 | N-1 | `maxMetadataBytes` 32MB → 8MB；`statsJson` 改流式解码，玩家条目上限 64；解析记录 `metaBytes`/耗时 | `internal/domain/rofl/parser.go`、`internal/service/match.go` |
 | N-2 | 注册增加 IP（10 次/10 分钟）与同邮箱（5 次/小时）计数；409 冲突写审计 | `internal/web/handlers_auth.go` |
@@ -88,7 +88,7 @@ lol-civil-war migrate
 
 已完成验证：
 
-- Go **1.26.0** 与 **1.27.3** 双工具链下 `go build` / `go vet` / `go test ./...`（含 MySQL 集成）全部通过；
+- **Go 1.27.4**（与 CI、发布镜像一致）下 `go build` / `go vet` / `go test ./...`（含 MySQL 集成）全部通过；
 - `gosec` **0 issues**，`govulncheck` **0 个可达漏洞**；
 - 旧库（缺 `group_id`、`absolute_expires_at`、旧 `uk_rofl_sha256`）迁移成功且幂等，同一录像可在第二个群独立去重；
 - 真实起服冒烟：环境变量白名单启动期建档、HTML 页面刷新会话 CSRF、登录态 `Cookie==Header` 返回 419、静态资源不下发 Cookie；

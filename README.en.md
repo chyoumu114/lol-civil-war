@@ -10,7 +10,7 @@
 
 A 5v5 custom-game organizer for League of Legends communities — QQ groups, WeChat groups, Discord servers, and any other group. It covers registration, automatic team balancing, match records, post-game ratings, and leaderboards.
 
-The backend was rewritten in Go 1.27.3 as a single binary with MySQL 8 and an embedded frontend. A few commands are enough for a complete deployment.
+The backend was rewritten in Go 1.27.4 as a single binary with MySQL 8 and an embedded frontend. A few commands are enough for a complete deployment.
 
 ## Features
 
@@ -31,7 +31,7 @@ The backend was rewritten in Go 1.27.3 as a single binary with MySQL 8 and an em
 
 | Component | Choice |
 | --- | --- |
-| Backend | Go 1.27.3 (standard library `net/http`, no web framework) |
+| Backend | Go 1.27.4 (standard library `net/http`, no web framework) |
 | Database | MySQL 8.0+ / 8.4 LTS (driver `github.com/go-sql-driver/mysql`) |
 | Frontend | Vue 3 + Arco Design Vue + Vite; build output is embedded in the binary |
 | Deployment | Docker Compose: application container + MySQL container |
@@ -78,7 +78,7 @@ Open `http://localhost:18020/` on the server or through an SSH tunnel, then clic
 
 ### Run from source
 
-Requirements: Go 1.26+ (minimum imposed by dependencies; release images are built with Go 1.27.3), Node.js 22.23.4+, and a reachable MySQL 8 instance with a database:
+Requirements: Go 1.27.4+, Node.js 22.23.4+, and a reachable MySQL 8 instance with a database:
 
 ```bash
 make build
