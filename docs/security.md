@@ -89,7 +89,7 @@ lol-civil-war migrate
 已完成验证：
 
 - **Go 1.27.4**（与 CI、发布镜像一致）下 `go build` / `go vet` / `go test ./...`（含 MySQL 集成）全部通过；
-- `gosec` **0 issues**，`govulncheck` **0 个可达漏洞**；
+- `gosec` **0 issues**，`govulncheck` 源码模式 **0 个可达漏洞**，发布二进制 `-mode=binary` 扫描也 **0 漏洞**；
 - 旧库（缺 `group_id`、`absolute_expires_at`、旧 `uk_rofl_sha256`）迁移成功且幂等，同一录像可在第二个群独立去重；
 - 真实起服冒烟：环境变量白名单启动期建档、HTML 页面刷新会话 CSRF、登录态 `Cookie==Header` 返回 419、静态资源不下发 Cookie；
 - 线上 v0.5.1 验证：健康检查、CSP/HSTS、`__Host-lcw_session`、群解析 200/404、可信代理真实 IP、数据量不变。
@@ -102,7 +102,9 @@ lol-civil-war migrate
 | --- | --- | --- | --- | --- |
 | v0.5.0 | `27b5183` | `.../lol-civil-war:v0.5.0` | 2026-11-10 14:22 | `backup-20261110-140024.sql.gz` |
 | v0.5.1 | `e3d47d8` | `.../lol-civil-war:v0.5.1` | 2026-11-10 18:48 | `backup-20261110-184819.sql.gz` |
+| v0.5.2 | `89b4265` | `.../lol-civil-war:v0.5.2` | 2026-11-13 23:47 | `backup-20261113-234650.sql.gz` |
 
 - v0.5.0：安全加固第一批（含数据库迁移：会话绝对寿命、录像按群去重）。
 - v0.5.1：第三轮审计修复；**无数据库结构变更**。
+- v0.5.2：构建工具链升级到 Go 1.27.4（修复 `GO-2026-6859` net/http `MaxBytesReader` 竞争）并升级 `x/crypto v0.59.0`（`GO-2026-5932`）；无业务代码与 schema 变更，二进制扫描 0 漏洞。
 - 回滚：把远端 `/opt/lol-civil-war/.env` 的 `LCW_IMAGE` 改回上一版本，执行 `docker compose up -d`。
