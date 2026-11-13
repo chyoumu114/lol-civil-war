@@ -48,7 +48,7 @@
 
 | 编号 | 处理方式 | 主要位置 |
 | --- | --- | --- |
-| I-05 | `go.mod` 最低版本从 `1.27.3` 降到 `1.26.0`（`golang.org/x/crypto v0.58` 的最低要求）；CI 的 `setup-go` 按 go.mod 安装 1.26.x，安全门禁可真正执行；发布镜像仍用 Go 1.27.3 构建并验证 | `go.mod`、`.github/workflows/ci.yml`、`deploy/Dockerfile` |
+| I-05 | `go.mod` 最低版本从 `1.27.3` 降到 `1.26.0`（`golang.org/x/crypto v0.58` 的最低要求）；CI 固定 Go 1.27.3（与发布镜像一致），go.mod 只声明最低语言版本 1.26.0；安全门禁可真正执行 | `go.mod`、`.github/workflows/ci.yml`、`deploy/Dockerfile` |
 | N-6 | 有会话时 **只接受会话绑定的 CSRF Token**，删除双提交回退；SPA/HTML 页面也加载会话并刷新 XSRF Cookie，避免误删 Cookie 后无法恢复 | `internal/web/session.go` |
 | N-1 | `maxMetadataBytes` 32MB → 8MB；`statsJson` 改流式解码，玩家条目上限 64；解析记录 `metaBytes`/耗时 | `internal/domain/rofl/parser.go`、`internal/service/match.go` |
 | N-2 | 注册增加 IP（10 次/10 分钟）与同邮箱（5 次/小时）计数；409 冲突写审计 | `internal/web/handlers_auth.go` |

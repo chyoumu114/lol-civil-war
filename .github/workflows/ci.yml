@@ -27,7 +27,9 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          # 固定与 deploy/Dockerfile 一致的构建版本；go.mod 只声明最低语言版本 1.26.0。
+          # 不要改回 go-version-file，否则会安装 1.26.0，其标准库存在已修复漏洞导致 govulncheck 失败。
+          go-version: '1.27.3'
           cache: true
 
       - uses: actions/setup-node@v4
